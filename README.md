@@ -2,7 +2,7 @@
 
 Webapp voor Project Levertekorten (Mosadex). Apothekers beoordelen ieder zelfstandig de voorgestelde alternatieven bij levertekorten. De app voegt de oordelen automatisch samen, en de coördinator maakt daarna het laadbestand voor Optimaal Aanschrijven (OA).
 
-**Link:** https://agjan0612.github.io/levertekorten/ (werkt zodra de eenmalige inrichting hieronder is gedaan)
+**Link:** https://agjan0612.github.io/Levertekorten/ (werkt zodra de eenmalige inrichting hieronder is gedaan; het exacte adres staat in *Settings → Pages*)
 
 ## Hoe het werkt
 
@@ -82,7 +82,7 @@ In deze repository: **Settings → Pages → Build and deployment → Source: Gi
    - `beoordelaar` (true/false);
    - `coordinator` (true/false). Zet dit op true voor wie coördineert.
 4. **Authentication → URL Configuration:**
-   - *Site URL*: `https://agjan0612.github.io/levertekorten/`;
+   - *Site URL*: het adres van de app, precies zoals GitHub het toont bij *Settings → Pages* (waarschijnlijk `https://agjan0612.github.io/Levertekorten/`);
    - voeg bij *Redirect URLs* hetzelfde adres toe.
 5. Optioneel: **Authentication → Emails → Magic Link** om de tekst van de inlogmail in het Nederlands te zetten. Laat `{{ .ConfirmationURL }}` staan als link.
 6. **Project Settings → API:** kopieer de *Project URL* en de *anon public* sleutel naar [`js/config.js`](js/config.js). De anon-sleutel is bedoeld om in een webpagina te staan; wie wat mag, regelt de database.
