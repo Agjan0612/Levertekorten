@@ -1,0 +1,11 @@
+{
+  "name": "levertekorten",
+  "private": true,
+  "description": "Beoordelingsapp alternatieven bij levertekorten (Mosadex)",
+  "scripts": {
+    "bouw": "node tools/bouw-data.js",
+    "test": "node --test tests/kern.test.js",
+    "test:rls": "tests/rls/draai.sh",
+    "test:browser": "node tests/e2e/gedeeld.js"
+  }
+}

@@ -1,0 +1,62 @@
+# Bij elke wijziging op main: Excel in invoer/ omzetten naar data/, testen,
+# en de app publiceren op GitHub Pages.
+name: Testen en publiceren
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  bouwen:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Excel-bestanden in invoer/ omzetten naar data/
+        run: node tools/bouw-data.js
+      - name: Rekenlogica testen
+        run: node --test tests/kern.test.js
+      - name: Toegangsregels van de database testen
+        run: tests/rls/draai.sh
+      - name: Bijgewerkte data/ terugzetten in de repository
+        if: github.event_name == 'push'
+        run: |
+          if ! git diff --quiet -- data/; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/
+            git commit -m "Gegevens bijgewerkt uit invoer/"
+            git push
+          fi
+      - name: Site samenstellen
+        run: |
+          mkdir _site
+          cp -r index.html css js vendor data _site/
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: _site
+
+  publiceren:
+    if: github.event_name != 'pull_request'
+    needs: bouwen
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
