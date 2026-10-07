@@ -2,6 +2,8 @@
 
 Richtlijnen voor Claude Code in deze repository. Taal van code-commentaar, UI, commits en documentatie: **Nederlands**. De gebruiker (Arnout Janse, apotheker, projectleider Levertekorten bij Mosadex) is niet technisch: leg stappen in gewone taal uit en doe zoveel mogelijk zelf.
 
+**Begin elke nieuwe sessie met `VOORTGANG.md`**: daarin staan de genomen besluiten, de stand van zaken en de openstaande punten. Werk dat bestand bij als er iets wezenlijks verandert.
+
 ## Wat dit is
 
 Statische webapp (GitHub Pages) waarmee apothekers ieder zelfstandig alternatieven bij levertekorten beoordelen. Oordelen worden centraal opgeslagen in **Supabase**. Eindoordeel = **minimaal twee apothekers eens** (`MIN_EENS` in `js/kern.js`). Zie `README.md` voor de werkwijze.
