@@ -71,6 +71,17 @@ window.supabase = {
           const l = JSON.parse(localStorage.getItem('nep-links') || '[]'); l.push({email, redirect: options.emailRedirectTo}); localStorage.setItem('nep-links', JSON.stringify(l));
           return {error: null};
         },
+        // De "mail" bevat altijd code 123456 en knop ?inlog=hash-<adres>; alleen geldig voor een adres
+        // waarvoor een mail is aangevraagd, en elk inlogbewijs werkt één keer (zoals bij Supabase).
+        async verifyOtp({email, token, token_hash, type}) {
+          const l = JSON.parse(localStorage.getItem('nep-links') || '[]');
+          if (token_hash) email = token_hash.replace(/^hash-/, '');
+          const i = l.findIndex(x => x.email === email && !x.gebruikt);
+          if (type !== 'email' || i < 0 || (token_hash ? !token_hash.startsWith('hash-') : token !== '123456')) return {data: null, error: {message: 'Token has expired or is invalid'}};
+          l[i].gebruikt = true; localStorage.setItem('nep-links', JSON.stringify(l));
+          sessionStorage.setItem('nep-sessie', email);
+          return {data: {session: {user: {email}}}, error: null};
+        },
         async signOut() { sessionStorage.removeItem('nep-sessie'); return {error: null}; }
       },
       from: t => new Query(t),

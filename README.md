@@ -6,7 +6,7 @@ Webapp voor Project Levertekorten (Mosadex). Apothekers beoordelen ieder zelfsta
 
 ## Hoe het werkt
 
-- Iedere apotheker opent dezelfde link en logt in met een **inloglink per e-mail**. Een wachtwoord is niet nodig.
+- Iedere apotheker opent dezelfde link en logt in via een **inlogmail** (knop of code). Een wachtwoord is niet nodig.
 - **Blind beoordelen:** je ziet alleen je eigen oordelen. De database dwingt dat af, niet alleen het scherm.
 - **Eindoordeel:** minimaal **twee apothekers moeten het eens zijn**.
 
@@ -25,7 +25,7 @@ Webapp voor Project Levertekorten (Mosadex). Apothekers beoordelen ieder zelfsta
 
 ## Voor de apothekers (beoordelen)
 
-1. Open de link en vul je e-mailadres in. Klik in de e-mail die je krijgt op de inloglink. De app onthoudt je daarna in die browser.
+1. Open de link en vul je e-mailadres in. Je krijgt een e-mail (dat kan een paar minuten duren). Klik op de knop in de mail en daarna in de app op **Inloggen**. Werkt de knop niet, of meldt hij "verlopen"? Typ dan de **inlogcode** uit dezelfde mail in de app. De app onthoudt je daarna in die browser.
 2. Je ziet **steeds één tekort** met de voorgestelde alternatieven, gesorteerd op Prio. De app begint bij het eerste tekort dat je nog niet (helemaal) hebt beoordeeld.
    - Per alternatief kies je **Akkoord**, **Niet akkoord** of **Bespreken**. Een toelichting is altijd optioneel: bij *Niet akkoord* en *Bespreken* staat het veld direct open, bij *Akkoord* klik je op *+ Toelichting toevoegen*.
    - Klik nogmaals op een gekozen oordeel om het te wissen.
@@ -87,15 +87,16 @@ In deze repository: **Settings → Pages → Build and deployment → Source: Gi
 4. **Authentication → URL Configuration:**
    - *Site URL*: het adres van de app, precies zoals GitHub het toont bij *Settings → Pages* (waarschijnlijk `https://agjan0612.github.io/Levertekorten/`);
    - voeg bij *Redirect URLs* hetzelfde adres toe.
-5. Optioneel: **Authentication → Emails → Magic Link** om de tekst van de inlogmail in het Nederlands te zetten. Laat `{{ .ConfirmationURL }}` staan als link.
-6. **Project Settings → API:** kopieer de *Project URL* en de *anon public* sleutel naar [`js/config.js`](js/config.js). De anon-sleutel is bedoeld om in een webpagina te staan; wie wat mag, regelt de database.
+5. **Eigen mailservice:** **Authentication → Emails → SMTP Settings** (de ingebouwde mail van Supabase stuurt alleen naar leden van de Supabase-organisatie). Zet daarna bij **Authentication → Rate Limits** het aantal mails per uur hoger (bijv. 30).
+6. **Inlogmail:** zet bij **Authentication → Emails → Templates** zowel *Confirm signup* als *Magic Link* op de inhoud van [`supabase/inlogmail.html`](supabase/inlogmail.html), met als onderwerp *Inloggen: beoordeling alternatieven*. Die mail bevat een knop (opent de app, inloggen pas na een klik, zodat mailscanners de link niet kunnen opmaken) en een inlogcode. Pas het adres in de knop aan als de app ergens anders staat. Doe dit pas **nadat** de app-versie met het codeveld online staat.
+7. **Project Settings → API:** kopieer de *Project URL* en de *anon public* sleutel naar [`js/config.js`](js/config.js). De anon-sleutel is bedoeld om in een webpagina te staan; wie wat mag, regelt de database.
 
 Zolang `js/config.js` leeg is, draait de app in **proefmodus**. Je kiest dan een proefapotheker, en alles blijft alleen in je eigen browser. Zo kun je de app al uitproberen.
 
 ## Bekende beperkingen
 
 - **Pauzeren:** een gratis Supabase-project wordt na ongeveer een week zonder gebruik gepauzeerd. Herstel het dan in het Supabase-dashboard (*Restore project*). De gegevens blijven bewaard.
-- **Inlogmails:** de ingebouwde e-mail van Supabase verstuurt maar een paar inlogmails per uur. Iedereen blijft lang ingelogd, dus in de praktijk is dat genoeg. Lukt het niet, probeer het dan na een paar minuten opnieuw.
+- **Inlogmails:** gaan via een eigen mailservice (maximaal 30 per uur). Per adres kan maar één mail per minuut worden aangevraagd. Zakelijke mailservers houden een mail soms een paar minuten vast; vraag dan niet meteen een nieuwe aan.
 - **Openbare gegevens:** de lijst en de Z-index staan openbaar in deze repository en op de site. De oordelen, namen en e-mailadressen staan alleen in de database.
 - **De coördinator ziet alles:** wie coördinator is, kan de oordelen van iedereen lezen, ook als die persoon zelf beoordeelt.
 

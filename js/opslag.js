@@ -1,6 +1,7 @@
 /* Opslag van oordelen, voorstellen en besluiten.
    - Supabase (gedeeld): als js/config.js een Supabase-adres en -sleutel bevat.
-     Inloggen gaat met een e-maillink; de database bepaalt wie wat mag zien.
+     Inloggen gaat met een e-maillink of de code uit die mail; de database
+     bepaalt wie wat mag zien.
    - Proefmodus: zonder Supabase. Alles blijft in deze browser; je kiest zelf
      een proefapotheker. Handig om de app te leren kennen.
    Beide uitvoeringen hebben dezelfde (async) functies. */
@@ -89,6 +90,25 @@ function supabaseOpslag() {
       if (error) {
         if (/rate limit|too many|seconds/i.test(error.message)) throw new Error('Er zijn net al inloglinks verstuurd. Wacht een paar minuten en probeer het opnieuw.');
         throw new Error('De inloglink kon niet worden verstuurd: ' + error.message);
+      }
+    },
+    /* Inloggen met de code uit de mail: vangnet als de knop in de mail niet werkt. */
+    async verifieerCode(email, code) {
+      const {error} = await sb.auth.verifyOtp({email: email.trim().toLowerCase(), token: String(code).replace(/\s+/g, ''), type: 'email'});
+      if (error) {
+        if (/expired|invalid/i.test(error.message)) throw new Error('Deze code klopt niet of is verlopen. Controleer de cijfers, of vraag een nieuwe mail aan.');
+        if (/rate limit|too many|seconds/i.test(error.message)) throw new Error('Te veel pogingen achter elkaar. Wacht een paar minuten en probeer het opnieuw.');
+        throw new Error('Inloggen met de code is mislukt: ' + error.message);
+      }
+    },
+    /* Inloggen via de knop in de mail. Die knop opent de app met ?inlog=<token-hash>;
+       pas na een klik van de gebruiker wordt die ingewisseld, zodat een mailscanner
+       die de link vooraf opent hem niet kan opmaken (dan zou ook de code vervallen). */
+    async verifieerLink(tokenHash) {
+      const {error} = await sb.auth.verifyOtp({token_hash: tokenHash, type: 'email'});
+      if (error) {
+        if (/expired|invalid/i.test(error.message)) throw new Error('Deze inloglink is verlopen of al gebruikt. Gebruik de inlogcode uit dezelfde mail, of vraag een nieuwe mail aan.');
+        throw new Error('Inloggen via de link is mislukt: ' + error.message);
       }
     },
     async uitloggen() { await sb.auth.signOut(); },
