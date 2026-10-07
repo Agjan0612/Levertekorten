@@ -17,7 +17,8 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 3 | Toelichting optioneel gemaakt; bestanden ingebouwd in het HTML-bestand | Gedaan (in de losse versie) |
 | 4 | Gekozen voor een **gedeelde webapp**: GitHub Pages voor de link, Supabase voor de gedeelde opslag. Een gedeelde map of claude.ai viel af (zie §3). | Gebouwd: deze repository |
 | 5 | Supabase-project aangemaakt en ingericht via de Supabase-connector, en de app eraan gekoppeld | Gedaan |
-| 6 | Publiceren op GitHub Pages en de eerste echte inlogtest | **Open** (zie §7) |
+| 6 | GitHub Pages aangezet, Supabase URL-instelling gedaan, panel (3 apothekers) in de database gezet | Gedaan (7 okt) |
+| 7 | De eerste echte inlogtest met het panel | **Open** (zie §7) |
 
 ## 3. Genomen besluiten
 
@@ -66,7 +67,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 | Onderdeel | Gegevens |
 |---|---|
 | GitHub | `Agjan0612/Levertekorten` (openbaar), branch `main` |
-| GitHub Pages | Moet nog aan: Settings → Pages → Source: **GitHub Actions**. Adres daarna: `https://agjan0612.github.io/Levertekorten/` |
+| GitHub Pages | Aan (Source: GitHub Actions). Adres: `https://agjan0612.github.io/Levertekorten/` |
 | Supabase | Organisatie "Levertekorten", project `levertekorten`, ref `obmjttyruqyqprulojbv`, regio Frankfurt (eu-central-1), gratis plan |
 | Supabase-URL | `https://obmjttyruqyqprulojbv.supabase.co` (staat in `js/config.js`) |
 | Sleutel in de app | *publishable* sleutel (bedoeld als openbaar). De service-role-sleutel staat nergens en hoort er ook niet. |
@@ -84,14 +85,12 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 
 ## 7. Openstaande punten
 
-**Voor de opdrachtgever (handmatig)**
-1. **GitHub Pages aanzetten:** https://github.com/Agjan0612/Levertekorten/settings/pages → Source: *GitHub Actions*. Draai daarna de workflow opnieuw (Actions → *Testen en publiceren* → *Run workflow*), of wacht op de volgende wijziging.
-2. **Supabase URL-instelling:** https://supabase.com/dashboard/project/obmjttyruqyqprulojbv/auth/url-configuration
-   - *Site URL* = `https://agjan0612.github.io/Levertekorten/`;
-   - hetzelfde adres toevoegen bij *Redirect URLs*.
-3. **E-mailadressen van de drie panelleden aanleveren.** Die zet Claude via de connector in de tabel `panel`, en niet in de repository.
+**Gedaan op 7 oktober**
+1. GitHub Pages staat aan (Source: *GitHub Actions*).
+2. Supabase: *Site URL* en *Redirect URLs* = `https://agjan0612.github.io/Levertekorten/`.
+3. Panel in de tabel `panel`: drie beoordelaars, de opdrachtgever is ook coördinator. De e-mailadressen staan alleen in de database.
 
-**Daarna samen**
+**Nu samen**
 4. De eerste echte test:
    - inloggen via de e-maillink;
    - een oordeel geven;
