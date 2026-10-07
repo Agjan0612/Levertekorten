@@ -11,9 +11,11 @@ Statische webapp (GitHub Pages) waarmee apothekers ieder zelfstandig alternatiev
 - `js/kern.js`: pure logica (Excel inlezen, consensus, laadbestand). Draait in browser en Node.
 - `js/opslag.js`: Supabase-opslag, of de proefmodus (localStorage) als `js/config.js` leeg is.
 - `js/app.js`: schermen. `js/config.js`: Supabase-URL en anon-sleutel.
+- **Beoordelaarsscherm heeft twee weergaven** (`MODUS` in `js/app.js`, per browser onthouden in localStorage `lt:modus`): `stap` (standaard, één tekort per scherm, `renderStap()`) en `lijst` (alle tekorten met filters en tabbladen). De stapweergave hergebruikt dezelfde `.regel[data-key]`-markup (`htmlRegel`) en zet zijn inhoud in een container met id `#lijst`, zodat de bestaande klik-, invoer- en toetsenbordluisteraars ongewijzigd werken. `renderTabs()` doet niets zonder `#tabs`; roep in de stapweergave nooit `renderLijst()` aan. Toelichting in de stapweergave: verborgen tot een keuze (CSS op `.o-niet`/`.o-bespreken`/`.toel-open`).
 - `supabase/schema.sql`: tabellen en RLS (blind beoordelen, coördinator ziet alles). Herhaalbaar uit te voeren.
 - `invoer/*.xlsx` → `node tools/bouw-data.js` → `data/*.json`. De workflow `.github/workflows/publiceren.yml` doet dit, test en publiceert naar Pages.
-- Tests: `node --test tests/kern.test.js`, `tests/rls/draai.sh` (lokale PostgreSQL), `node tests/e2e/gedeeld.js` (Playwright, nagebootste Supabase).
+- Tests: `node --test tests/kern.test.js`, `tests/rls/draai.sh` (lokale PostgreSQL), `node tests/e2e/gedeeld.js` (Playwright, nagebootste Supabase). In `gedeeld.js` opent `tab(email, modus)` standaard de **lijst**weergave; het blok "Stap voor stap" test de stapweergave. Playwright staat in `/opt/node-tools/node_modules/playwright`.
+- **Screenshots maken** (UI-review, handleidingen): start een kleine http-server zoals in `tests/e2e/gedeeld.js` (vervang `vendor/supabase.js` door `tests/e2e/nep-supabase.js` en `js/config.js` door `tests/e2e/nep-config.js`), zet testgegevens in localStorage `nep-db` (`{panel, oordelen, voorstellen, besluiten, coordinatie}`; oordelen-rijen hebben de kolommen `oordeel` en `toelichting`) en log in via sessionStorage `nep-sessie` = e-mailadres. Gebruik **verzonnen** namen; handleidingen met de echte panelnamen horen niet in de repository.
 - Het OA-laadbestand moet exact blijven: `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie`, UTF-8 zonder BOM, CRLF. Namen letterlijk overnemen (ook dubbele spaties).
 
 ## Supabase
@@ -24,4 +26,12 @@ Project `levertekorten` (ref `obmjttyruqyqprulojbv`, regio eu-central-1, organis
 - **Panel:** beheer met `execute_sql` (`insert … on conflict (email) do update …`). **Zet nooit e-mailadressen of panelnamen in de repository** (die is openbaar).
 - **Advisors:** 3 waarschuwingen "SECURITY DEFINER function executable" (`is_beoordelaar`, `is_coordinator`, `mijn_profiel`) zijn bewust. Ze geven alleen informatie over de ingelogde gebruiker zelf, en de RLS-regels hebben ze nodig.
 - **Handmatige stap voor de gebruiker:** Authentication → URL Configuration → *Site URL* en *Redirect URLs* = het Pages-adres (`https://agjan0612.github.io/Levertekorten/`). Zonder die stap stuurt de inlogmail naar localhost.
-- Gratis projecten pauzeren na ongeveer een week zonder gebruik; herstellen kan met `restore_project`.
+- Gratis projecten pauzeren na ongeveer een week zonder gebruik; herstellen kan met `restore_project`. Database-back-ups zijn op het gratis plan niet te downloaden (alleen de knop *Back-up* in de app).
+- **Inlogmail (belangrijk):** zonder eigen SMTP stuurt Supabase alleen naar leden van de Supabase-organisatie ("Email address not authorized") en maar een paar per uur. Voor het panel is een eigen SMTP-dienst nodig (Authentication → SMTP). Zakelijke mailscanners openen links vooraf, waardoor een eenmalige inloglink "expired" raakt: daarom komt er een inlogcode (`{{ .Token }}` + `verifyOtp`). Inloggen gebruikt `flowType: 'implicit'` en `shouldCreateUser: true` (`js/opslag.js`).
+- **Logboeken** bekijken kan met `query_logs` (bron `auth_logs` voor inlogpogingen).
+
+## Werkwijze in deze repository
+
+- Werk op de branch die de sessie aangeeft (`claude/…`). GitHub publiceert alleen vanaf `main` (workflow bij push). Maak een pull request en voeg samen **alleen als de opdrachtgever daarom vraagt**; controleer daarna de workflow (*Testen en publiceren*) met de GitHub-tools. `*.github.io` is vanuit de container niet bereikbaar.
+- Een samengevoegde PR is af: begin vervolgwerk op een verse branch vanaf `main`.
+- Werk na een wezenlijke wijziging ook `README.md` bij (werkwijze voor de apothekers) en `VOORTGANG.md`.

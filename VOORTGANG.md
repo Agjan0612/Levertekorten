@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 7 oktober 2026. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 7 oktober 2026, eind van de middag. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -17,14 +17,18 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 3 | Toelichting optioneel gemaakt; bestanden ingebouwd in het HTML-bestand | Gedaan (in de losse versie) |
 | 4 | Gekozen voor een **gedeelde webapp**: GitHub Pages voor de link, Supabase voor de gedeelde opslag. Een gedeelde map of claude.ai viel af (zie §3). | Gebouwd: deze repository |
 | 5 | Supabase-project aangemaakt en ingericht via de Supabase-connector, en de app eraan gekoppeld | Gedaan |
-| 6 | GitHub Pages aangezet, Supabase URL-instelling gedaan, panel (3 apothekers) in de database gezet | Gedaan (7 okt) |
-| 7 | Beoordelaarsscherm vernieuwd: **stap voor stap** (één tekort per scherm) als standaard, gekozen uit drie ontwerpopties; de lijst blijft bereikbaar | Gedaan (7 okt), op branch `claude/gifted-einstein-fu5kim` |
-| 8 | De eerste echte inlogtest met het panel | **Open** (zie §7) |
+| 6 | GitHub Pages aangezet, Supabase URL-instelling gedaan, panel (3 apothekers) in de database gezet; eerste publicatie geslaagd | Gedaan (7 okt) |
+| 7 | UI-analyse met screenshots (Playwright); drie ontwerpopties voor het beoordelaarsscherm gemaakt; opdrachtgever koos **optie B: stap voor stap** | Gedaan (7 okt) |
+| 8 | Optie B gebouwd en live gezet via [PR #1](https://github.com/Agjan0612/Levertekorten/pull/1) (samengevoegd in `main`, gepubliceerd) | Gedaan (7 okt) |
+| 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt), bewust **niet** in de repository (zie §3) |
+| 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Gevonden (7 okt), **nog op te lossen** (zie §7) |
+| 11 | De eerste echte inlogtest met het panel | **Open**: pas na punt 10 |
 
 ## 3. Genomen besluiten
 
 **Werkwijze en beoordeling**
-- **Beoordelaarsscherm (7 okt):** standaard *stap voor stap*: één tekort per scherm, grote knoppen, onderaan *Volgende tekort* / *Overslaan, later doen* en *Vorige*. Start bij het eerste open tekort; *Volgende* slaat tekorten over die al af zijn. Korte uitleg bij de eerste keer, een eindscherm "Klaar". De oude lijst (met filters en tabbladen) blijft bereikbaar via *Lijst van alle tekorten*; de keuze wordt per browser onthouden (`lt:modus`). Back-up/Excel staan onder *Meer*. Categorieën in gewone taal (code in de tooltip). Ontwerpopties: https://claude.ai/artifact/CiqMq9fee5AFEPkMa4PJQW (privé).
+- **Beoordelaarsscherm (7 okt, live):** standaard *stap voor stap*: één tekort per scherm, grote knoppen, onderaan *Volgende tekort* / *Overslaan, later doen* en *Vorige*. Start bij het eerste open tekort; *Volgende* slaat tekorten over die al af zijn. Korte uitleg bij de eerste keer, een eindscherm "Klaar". De oude lijst (met filters en tabbladen) blijft bereikbaar via *Lijst van alle tekorten*; de keuze wordt per browser onthouden (`lt:modus`). Back-up/Excel staan onder *Meer*. Categorieën in gewone taal (code in de tooltip). Ontwerpopties: https://claude.ai/artifact/CiqMq9fee5AFEPkMa4PJQW (privé). Ook: voorraadklasse als "Voorraad Mosadex: …", toelichting pas na een keuze (direct open bij Niet akkoord/Bespreken), op de telefoon scrollen kop- en filterbalk mee.
+- **Tekorten zonder alternatief** zitten niet in de stapweergave; die staan in de lijstweergave (tabblad *Geen alternatief*), bereikbaar vanaf het eindscherm.
 - **Eindoordeel:** minimaal **twee apothekers moeten het eens zijn** (`MIN_EENS = 2` in `js/kern.js`).
   - Minimaal twee keer Akkoord → **Akkoord**.
   - Minimaal twee keer Niet akkoord → **Afgewezen**.
@@ -48,6 +52,10 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 **Gegevens**
 - De lijst met tekorten en de Z-index mogen openbaar staan (toestemming van de opdrachtgever). De oordelen, namen en e-mailadressen niet.
 - Een nieuwe lijst of Z-index zet je in `invoer/`. Een nieuwe versie van de lijst krijgt eigen oordelen; de app biedt aan om eerdere oordelen over te nemen voor regels die in beide versies staan.
+- **Handleidingen** (Word + HTML, beoordelaars en coördinator) staan niet in de repository: de coördinatorhandleiding noemt de panelnamen en de repository is openbaar. De opdrachtgever heeft de bestanden. Opnieuw maken kan met dezelfde aanpak als de screenshots (zie `CLAUDE.md`).
+
+**Werkwijze met Claude**
+- Claude werkt op een eigen branch (`claude/…`). Online komt het pas na samenvoegen in `main` (pull request). Dat gebeurt alleen na akkoord van de opdrachtgever; daarna publiceert GitHub de app vanzelf.
 
 ## 4. Opbouw
 
@@ -82,34 +90,38 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 
 - `node --test tests/kern.test.js`: 7 tests, onder meer alle 64 combinaties van drie oordelen en het formaat van het laadbestand.
 - `tests/rls/draai.sh`: 23 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
-- `node tests/e2e/gedeeld.js`: 42 controles van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
-- Nog niet getest: de echte inlogmail en GitHub Pages, omdat die nog niet aanstonden. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
+- `node tests/e2e/gedeeld.js`: 42 controles (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
+- Nog niet getest: de echte inlogmail (zie §7: werkt zo nog niet voor de andere panelleden). De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
 
 ## 7. Openstaande punten
 
-**Gedaan op 7 oktober**
-1. GitHub Pages staat aan (Source: *GitHub Actions*).
-2. Supabase: *Site URL* en *Redirect URLs* = `https://agjan0612.github.io/Levertekorten/`.
-3. Panel in de tabel `panel`: drie beoordelaars, de opdrachtgever is ook coördinator. De e-mailadressen staan alleen in de database.
+**A. Eerst oplossen, vóór de beoordelaars de link krijgen (blokkades)**
+1. **Eigen mailservice (SMTP) koppelen.** De ingebouwde mail van Supabase stuurt alleen naar leden van de Supabase-organisatie ("Email address not authorized" voor alle anderen), en maar een paar mails per uur. Mogelijk komt ook de mail naar het ncontrol-adres van de opdrachtgever niet aan. Oplossing: een gratis dienst (bijv. Resend of Brevo), gegevens invullen bij Supabase → Authentication → SMTP; daarna de maillimiet bij *Rate Limits* ophogen. De opdrachtgever doet dit in het dashboard; Claude schrijft het stappenplan.
+2. **Inloggen met een 6-cijferige code** naast de link. Zakelijke mailboxen (Microsoft 365 / Defender) klikken links vooraf aan om ze te controleren; een inloglink werkt maar één keer, dus daarna krijgt de gebruiker "link is invalid or has expired" (door Supabase zelf genoemd als meest voorkomende oorzaak). Bouwen: invoerveld voor de code + `verifyOtp` in `js/opslag.js`, mailsjabloon met `{{ .Token }}` (Nederlandse tekst, link mag blijven).
+Uit de logboeken (7 okt): nog geen inlogpogingen gedaan, er is dus nog niets misgegaan.
 
-**Nu samen**
-4. De eerste echte test:
-   - inloggen via de e-maillink;
-   - een oordeel geven;
-   - een tweede apotheker laten beoordelen;
-   - wisselen naar Coördineren en de uitkomst controleren;
-   - een laadbestand maken.
-5. Optioneel: de inlogmail in het Nederlands (Supabase → Authentication → Emails → Magic Link; laat `{{ .ConfirmationURL }}` staan).
-6. Testen met de echte gepubliceerde lijst van 16-09, zodra de opdrachtgever die aanlevert.
+**B. Daarna samen**
+3. De eerste echte test: inloggen (met code), oordelen geven, tweede apotheker, Coördineren, laadbestand. Daarna de proefoordelen wissen (via `execute_sql`) zodat het panel leeg begint.
+4. Testen met de echte gepubliceerde lijst van 16-09, zodra de opdrachtgever die aanlevert.
+5. **Vraag aan de opdrachtgever:** voegt OA een laadbestand *toe* aan de bestaande tabel, of *vervangt* het die? Bij vervangen zijn alle bestaande adviezen weg als de gepubliceerde lijst niet is geladen (de app waarschuwt wel).
 
-**Ideeën en aandachtspunten voor later**
+**C. Bekende beperkingen (gevonden 7 okt), later oplossen**
+- **Pauzeren:** gratis project pauzeert na ~7 dagen zonder gebruik, dus zeker tussen rondes. Voorstel: GitHub Action (cron) die elke paar dagen de database aanroept. Herstellen kan via het dashboard of `restore_project`.
+- **Back-ups:** op het gratis plan zijn database-back-ups niet te downloaden. Advies aan de coördinator: knop *Back-up* na elk overleg en vóór elke publicatie.
+- **Nieuwe lijstversie halverwege een ronde:** oordelen kunnen per beoordelaar worden overgenomen (alleen als die in de nieuwe versie nog niets heeft), maar **besluiten** (Bespreken/Voorstellen) en de geladen **gepubliceerde lijst** gaan niet mee (gekoppeld aan de vingerafdruk van de bron). Advies: lijst niet wijzigen tijdens een ronde; anders meenemen van besluiten bouwen.
+- **Panelwijziging:** iemand uit `panel` halen ⇒ diens oordelen tellen niet meer mee. Met een **vierde** beoordelaar kan het 2–2 worden; `consensus()` in `js/kern.js` geeft dan *Akkoord* (telt akkoord eerst). Eerst aanpassen als het panel groeit.
+- **Openbare inlogpagina:** `shouldCreateUser: true`; iedereen kan een inloglink aanvragen (komt niet verder dan "niet op de panellijst", RLS houdt alles tegen) en zo de maillimiet opmaken. Oplossing: CAPTCHA of aanmelden dichtzetten zodra het panel compleet is.
+- **Gedeelde/beheerde werkplekken** die browsergegevens wissen: elke keer opnieuw inloggen (kost een mail), en wijzigingen die offline in de wachtrij staan blijven in die ene browser.
+- Kleiner: na een update tot ~10 min de oude versie (Ctrl+F5); een andere opbouw van de Excel laat het publiceren mislukken (oude lijst blijft online, GitHub mailt); voor de AVG biedt Supabase standaard een verwerkersovereenkomst (data in Frankfurt).
+
+**D. Overige ideeën**
+- Nederlandse inlogmail (komt mee met punt A2).
+- Coördinatorscherm: zichtbare knop "besluit wissen" (nu: nogmaals klikken), categorie-keuzelijst bij Voorstellen breder, kleine grijze tekst iets donkerder.
 - **Gegevens:** twee gepubliceerde alternatieven bij PRK 133612 (PRK 49026 en 49034, prednisolon drank) staan niet meer in de Z-index. Het panel zal die waarschijnlijk afwijzen.
-- **Inlogmails:** de ingebouwde mailservice van Supabase verstuurt maar een paar mails per uur. Bij problemen een eigen SMTP-dienst instellen.
-- **Pauzeren:** een gratis project pauzeert na ongeveer een week zonder gebruik. Herstellen kan via het dashboard of `restore_project`.
-- **GitHub Actions:** geeft een waarschuwing dat Node 20 verouderd is. Later de actions bijwerken naar nieuwere versies.
+- **GitHub Actions:** waarschuwing dat Node 20 verouderd is. Later de actions bijwerken.
 
 ## 8. Verder in een nieuwe sessie
 
 Start een sessie met de repository **Levertekorten**, met de Supabase-connector aan, en begin bijvoorbeeld met:
 
-> Lees VOORTGANG.md en CLAUDE.md. We gaan verder bij de openstaande punten. [Vermeld wat je al hebt gedaan, bijvoorbeeld: "Pages en de URL-instelling in Supabase staan aan."] De e-mailadressen van het panel zijn: …
+> Lees VOORTGANG.md en CLAUDE.md. We gaan verder bij de openstaande punten, te beginnen met §7A (eigen mailservice en inlogcode). [Vermeld wat je al hebt gedaan, bijvoorbeeld: "Ik heb een account bij Resend aangemaakt."]
