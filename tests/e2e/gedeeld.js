@@ -21,8 +21,10 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   const browser = await chromium.launch();
   const ctx = await browser.newContext({viewport: {width: 1440, height: 900}, acceptDownloads: true});
   const fouten = [];
-  async function tab(email) {
+  // modus 'lijst' = alle tekorten onder elkaar (de meeste controles hieronder), 'stap' = één tekort per scherm
+  async function tab(email, modus = 'lijst') {
     const p = await ctx.newPage();
+    await p.addInitScript(m => localStorage.setItem('lt:modus', JSON.stringify(m)), modus);
     p.on('pageerror', e => fouten.push(e.message));
     p.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) fouten.push(m.text()); });
     if (email) await p.addInitScript(e => sessionStorage.setItem('nep-sessie', e), email);
@@ -154,6 +156,42 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   ok((await jan.inputValue(`.regel[data-key="${k[5]}"] textarea`)) === 'sterkte past niet', 'toelichting bewaard');
   await jan.click('#btnUit'); await jan.waitForSelector('#frmLogin');
   ok(true, 'uitloggen brengt terug naar het inlogscherm');
+
+  console.log('Stap voor stap (standaardweergave)');
+  const tekorten = bron.tekorten, open = t => t.keys.some(x => !k.slice(0, 7).includes(x));
+  const stap = await tab('femke@test.nl', 'stap'); await stap.waitForSelector('.stap');
+  const huidig = () => stap.getAttribute('.stap', 'data-tekort');
+  const eersteOpen = tekorten.findIndex(open);
+  ok((await stap.$$('.stap')).length === 1 && await huidig() === tekorten[eersteOpen].prk, 'opent op het eerste tekort met open regels, één tekort per scherm');
+  ok(await stap.isVisible('.uitleg'), 'uitleg "Zo werkt het" bij de eerste keer');
+  await stap.click('[data-actie=uitlegWeg]');
+  ok(!(await stap.$('.uitleg')), 'uitleg verdwijnt na "Begrepen"');
+  ok((await stap.textContent('#btnVolgende')).includes('Overslaan'), 'knop heet "Overslaan" zolang er nog iets open is');
+  const openKeys = tekorten[eersteOpen].keys.filter(x => !k.slice(0, 7).includes(x));
+  for (const key of openKeys) await geef(stap, key, 'akkoord');
+  ok((await stap.textContent('#btnVolgende')) === 'Volgende tekort', 'alles beoordeeld: knop wordt "Volgende tekort"');
+  const r0 = `.regel[data-key="${openKeys[0]}"]`;
+  ok(!(await stap.isVisible(`${r0} textarea`)) && await stap.isVisible(`${r0} .toel-knop`), 'bij akkoord: toelichting achter een knop');
+  await stap.click(`${r0} .toel-knop`);
+  ok(await stap.isVisible(`${r0} textarea`), 'toelichting opent na een klik');
+  await geef(stap, openKeys[1], 'niet');
+  ok(await stap.isVisible(`.regel[data-key="${openKeys[1]}"] textarea`), 'bij niet akkoord staat de toelichting direct open');
+  await stap.click('#btnVolgende');
+  const volgende = tekorten.findIndex((t, i) => i > eersteOpen && open(t));
+  ok(await huidig() === tekorten[volgende].prk, 'Volgende springt naar het volgende tekort met open regels');
+  await stap.click('[data-actie=stapVorige]');
+  ok(await huidig() === tekorten[volgende - 1].prk, 'Vorige gaat één tekort terug');
+  await stap.waitForFunction(() => document.querySelector('#opslagStatus').textContent.includes('Opgeslagen'));
+  ok(await stap.evaluate(ks => ks.every(x => JSON.parse(localStorage.getItem('nep-db')).oordelen.some(o => o.email === 'femke@test.nl' && o.sleutel === x && o.oordeel)), openKeys), 'oordelen uit de stapweergave staan in de database');
+  ok(!(await stap.isVisible('#btnExpJson')), 'back-up en Excel zitten in het menu "Meer"');
+  await stap.click('.meer-menu summary');
+  ok(await stap.isVisible('#btnExpJson'), 'menu "Meer" opent');
+  await stap.click('.stap-tekort h2');
+  ok(!(await stap.isVisible('#btnExpJson')), 'menu sluit bij een klik ernaast');
+  await stap.click('[data-actie=naarLijst]'); await stap.waitForSelector('#tabs');
+  ok((await stap.$$('.kaart')).length > 1, '"Lijst van alle tekorten" toont de lijstweergave');
+  await stap.click('[data-actie=naarStap]'); await stap.waitForSelector('.stap');
+  ok(true, 'en terug naar stap voor stap');
 
   await arnout.screenshot({path: path.join(require('os').tmpdir(), 'lt_coord.png')});
   ok(!fouten.length, 'geen fouten in de browser' + (fouten.length ? ': ' + fouten.join(' | ') : ''));
