@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 7 oktober 2026, eind van de middag. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 7 oktober 2026, avond. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -21,7 +21,7 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 7 | UI-analyse met screenshots (Playwright); drie ontwerpopties voor het beoordelaarsscherm gemaakt; opdrachtgever koos **optie B: stap voor stap** | Gedaan (7 okt) |
 | 8 | Optie B gebouwd en live gezet via [PR #1](https://github.com/Agjan0612/Levertekorten/pull/1) (samengevoegd in `main`, gepubliceerd) | Gedaan (7 okt) |
 | 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt), bewust **niet** in de repository (zie §3) |
-| 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Gevonden (7 okt), **nog op te lossen** (zie §7) |
+| 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Mailservice **opgelost** (7 okt, Brevo, zie §5); inlogcode nog open (zie §7) |
 | 11 | De eerste echte inlogtest met het panel | **Open**: pas na punt 10 |
 
 ## 3. Genomen besluiten
@@ -79,6 +79,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 | GitHub | `Agjan0612/Levertekorten` (openbaar), branch `main` |
 | GitHub Pages | Aan (Source: GitHub Actions). Adres: `https://agjan0612.github.io/Levertekorten/` |
 | Supabase | Organisatie "Levertekorten", project `levertekorten`, ref `obmjttyruqyqprulojbv`, regio Frankfurt (eu-central-1), gratis plan |
+| Inlogmail (SMTP) | Via **Brevo**, het account van de MBO-app van de opdrachtgever (gratis plan, 300 mails per dag, gedeeld met de MBO-app). Afzender `Levertekorten <levertekorten@mbo-app.nl>`; het domein mbo-app.nl is bij Brevo geauthenticeerd (DKIM + DMARC). Host `smtp-relay.brevo.com`, poort 587, eigen SMTP-sleutel "Supabase Levertekorten" (los van de MBO-app; staat alleen in Supabase). Maillimiet in Supabase: 30 per uur. Ingesteld 7 okt. |
 | Supabase-URL | `https://obmjttyruqyqprulojbv.supabase.co` (staat in `js/config.js`) |
 | Sleutel in de app | *publishable* sleutel (bedoeld als openbaar). De service-role-sleutel staat nergens en hoort er ook niet. |
 | Database | 5 tabellen (`panel`, `oordelen`, `voorstellen`, `besluiten`, `coordinatie`), 11 toegangsregels, live bijwerken aan voor 4 tabellen. Getest in de echte database (blind, coördinator ziet alles, geen toegang zonder inlog). |
@@ -91,14 +92,16 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 - `node --test tests/kern.test.js`: 7 tests, onder meer alle 64 combinaties van drie oordelen en het formaat van het laadbestand.
 - `tests/rls/draai.sh`: 23 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
 - `node tests/e2e/gedeeld.js`: 42 controles (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
-- Nog niet getest: de echte inlogmail (zie §7: werkt zo nog niet voor de andere panelleden). De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
+- Inlogmail via Brevo getest op 7 okt: aangekomen op een zakelijk adres van de opdrachtgever, link werkte, inloggen gelukt (in de logboeken 18 s tussen aanvragen en inloggen). Nog niet getest bij de andere panelleden. De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
 
 ## 7. Openstaande punten
 
 **A. Eerst oplossen, vóór de beoordelaars de link krijgen (blokkades)**
-1. **Eigen mailservice (SMTP) koppelen.** De ingebouwde mail van Supabase stuurt alleen naar leden van de Supabase-organisatie ("Email address not authorized" voor alle anderen), en maar een paar mails per uur. Mogelijk komt ook de mail naar het ncontrol-adres van de opdrachtgever niet aan. Oplossing: een gratis dienst (bijv. Resend of Brevo), gegevens invullen bij Supabase → Authentication → SMTP; daarna de maillimiet bij *Rate Limits* ophogen. De opdrachtgever doet dit in het dashboard; Claude schrijft het stappenplan.
+1. ~~**Eigen mailservice (SMTP) koppelen.**~~ **Gedaan (7 okt)** via Brevo, zie §5. Aandachtspunten:
+   - De Brevo-SMTP-sleutel vervalt na **1 jaar (7 okt 2027)** en ook na **90 dagen zonder gebruik** (kan gebeuren tussen rondes). Dan komen er geen inlogmails meer. Oplossing: in Brevo (⚙️ → SMTP & API → SMTP) een nieuwe sleutel maken en die in Supabase → Authentication → Emails → SMTP Settings als *Password* plakken. Bestaande sleutels en de API-sleutel van de MBO-app niet aanraken; in Brevo **niet** "Activate for SMTP keys" (IP-blokkade) aanzetten, want Supabase mailt vanaf wisselende adressen.
+   - Later eventueel een netter afzenderdomein (bijv. van Mosadex): alleen de SMTP-instellingen in Supabase wijzigen, de app zelf niet.
 2. **Inloggen met een 6-cijferige code** naast de link. Zakelijke mailboxen (Microsoft 365 / Defender) klikken links vooraf aan om ze te controleren; een inloglink werkt maar één keer, dus daarna krijgt de gebruiker "link is invalid or has expired" (door Supabase zelf genoemd als meest voorkomende oorzaak). Bouwen: invoerveld voor de code + `verifyOtp` in `js/opslag.js`, mailsjabloon met `{{ .Token }}` (Nederlandse tekst, link mag blijven).
-Uit de logboeken (7 okt): nog geen inlogpogingen gedaan, er is dus nog niets misgegaan.
+Uit de logboeken (7 okt, avond): eerste inlog via Brevo geslaagd; de link was bij dat adres niet vooraf "opgebruikt". Punt 2 blijft nodig voor adressen achter Microsoft 365 / Defender.
 
 **B. Daarna samen**
 3. De eerste echte test: inloggen (met code), oordelen geven, tweede apotheker, Coördineren, laadbestand. Daarna de proefoordelen wissen (via `execute_sql`) zodat het panel leeg begint.
