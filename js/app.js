@@ -773,9 +773,12 @@ async function start() {
   } catch (e) { return toonFout('De lijst of de Z-index kon niet worden geladen.', e); }
   $('#kopBron').textContent = BRON.bestand;
   Opslag.opStatus(toonOpslagStatus);
+  const inlogHash = Opslag.modus === 'supabase' ? new URLSearchParams(location.search).get('inlog') : null;
+  if (inlogHash) return renderLinkInloggen(inlogHash);
   try { GEBRUIKER = (await Opslag.init()).gebruiker; }
   catch (e) { return toonFout('Inloggen controleren is mislukt.', e); }
   if (!GEBRUIKER) return Opslag.modus === 'proef' ? renderProefKeuze() : renderInloggen();
+  LS.del('lt:inlog'); // ingelogd (ook via de link): de code is niet meer nodig
   if (!GEBRUIKER.opPanel) return renderNietOpPanel();
   let v = LS.get('lt:view');
   if (v !== 'coordineren' || !GEBRUIKER.coordinator) v = GEBRUIKER.beoordelaar ? 'beoordelen' : 'coordineren';
@@ -785,22 +788,86 @@ function introHtml() {
   return `<h1>Beoordeling alternatieven bij levertekorten</h1>
     <p class="intro">Een alternatief komt alleen in de adviestabel van Optimaal Aanschrijven als minimaal ${MIN_EENS} apothekers het eens zijn met het eindoordeel. Iedere apotheker beoordeelt zelfstandig; de app voegt de oordelen automatisch samen.</p>`;
 }
+/* Inloggen in twee stappen: e-mailadres → mail met een knop én een code. De code
+   is het vangnet als de knop niet werkt. Het adres wordt even onthouden, zodat je
+   na herladen of het wisselen van venster de code nog kunt invullen (1 uur geldig). */
+const INLOG_GELDIG = 60 * 60 * 1000;
 function renderInloggen() {
   renderKop('', false);
+  const bewaard = LS.get('lt:inlog');
+  if (bewaard && bewaard.email && Date.now() - bewaard.tijd < INLOG_GELDIG) return renderCodeInvoer(bewaard.email);
+  LS.del('lt:inlog');
   $('#main').innerHTML = `<div class="start">${introHtml()}
     <div class="blok"><h2>Inloggen</h2>
-      <p>Vul je e-mailadres in. Je krijgt een e-mail met een inloglink; klik daarop en je bent ingelogd. Een wachtwoord is niet nodig.</p>
-      <form id="frmLogin" style="display:flex;gap:8px;flex-wrap:wrap"><input type="email" id="inEmail" required placeholder="naam@voorbeeld.nl" autocomplete="email" style="flex:1;min-width:240px;padding:7px 9px;border:1px solid var(--rand);border-radius:4px"><button class="knop primair" type="submit">Stuur inloglink</button></form>
+      <p>Vul je e-mailadres in. Je krijgt een e-mail met een inloglink en een inlogcode. Een wachtwoord is niet nodig.</p>
+      <form id="frmLogin" class="inlog-form"><input type="email" id="inEmail" required placeholder="naam@voorbeeld.nl" autocomplete="email"><button class="knop primair" type="submit">Stuur inlogmail</button></form>
       <div id="loginMelding"></div>
+      <p class="klein"><button type="button" class="link-knop" id="btnHebCode">Ik heb al een inlogcode</button></p>
     </div></div>`;
+  $('#btnHebCode').addEventListener('click', () => {
+    const veld = $('#inEmail'), email = veld.value.trim().toLowerCase();
+    if (!veld.checkValidity() || !email) { veld.reportValidity(); return; }
+    LS.set('lt:inlog', {email, tijd: Date.now()});
+    renderCodeInvoer(email);
+  });
   $('#frmLogin').addEventListener('submit', async e => {
     e.preventDefault();
-    const knop = $('#frmLogin button'), email = $('#inEmail').value.trim();
+    const knop = $('#frmLogin button'), email = $('#inEmail').value.trim().toLowerCase();
     knop.disabled = true;
     try {
       await Opslag.stuurInloglink(email, location.origin + location.pathname);
-      $('#loginMelding').innerHTML = `<div class="melding" style="margin-top:12px">Er is een inloglink gestuurd naar <b>${esc(email)}</b>. Kijk in je mailbox (soms bij ongewenste e-mail) en klik op de link. Je mag dit venster sluiten.</div>`;
+      LS.set('lt:inlog', {email, tijd: Date.now()});
+      renderCodeInvoer(email);
     } catch (err) { $('#loginMelding').innerHTML = `<div class="melding fout" style="margin-top:12px">${esc(err.message)}</div>`; knop.disabled = false; }
+  });
+}
+/* Geopend via de knop in de inlogmail (?inlog=…). Bewust nog niet automatisch
+   inloggen: mailscanners openen links vooraf, en een klik is wat zij niet doen. */
+function renderLinkInloggen(tokenHash) {
+  renderKop('', false);
+  const weg = () => { const u = new URL(location.href); u.searchParams.delete('inlog'); history.replaceState(null, '', u.pathname + u.search + u.hash); };
+  $('#main').innerHTML = `<div class="start">${introHtml()}
+    <div class="blok"><h2>Inloggen</h2>
+      <p>Je opent de app via de inlogmail. Klik op de knop om in te loggen.</p>
+      <p><button class="knop primair groot" id="btnLinkInloggen">Inloggen</button></p>
+      <div id="linkMelding"></div>
+    </div></div>`;
+  $('#btnLinkInloggen').addEventListener('click', async () => {
+    const knop = $('#btnLinkInloggen');
+    knop.disabled = true;
+    try {
+      await Opslag.verifieerLink(tokenHash);
+      weg(); LS.del('lt:inlog');
+      start();
+    } catch (err) {
+      weg();
+      $('#linkMelding').innerHTML = `<div class="melding fout" style="margin-top:12px">${esc(err.message)}</div><p><button class="knop" id="btnLinkVerder">Naar het inlogscherm</button></p>`;
+      knop.remove();
+      $('#btnLinkVerder').addEventListener('click', () => start());
+    }
+  });
+}
+function renderCodeInvoer(email) {
+  $('#main').innerHTML = `<div class="start">${introHtml()}
+    <div class="blok"><h2>Inloggen</h2>
+      <div id="loginMelding"><div class="melding">Er is een e-mail gestuurd naar <b>${esc(email)}</b>. Het kan een paar minuten duren voordat die binnen is; kijk ook bij ongewenste e-mail.</div></div>
+      <p><b>Klik op de knop in de mail</b>, of <b>typ hieronder de inlogcode</b> uit de mail. Gebruik de code als de knop niet werkt of "verlopen" meldt.</p>
+      <form id="frmCode" class="inlog-form"><input type="text" id="inCode" class="code-invoer" required inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="123456" aria-label="Inlogcode uit de e-mail"><button class="knop primair" type="submit">Inloggen</button></form>
+      <div id="codeMelding"></div>
+      <p class="klein"><button type="button" class="link-knop" id="btnAnderAdres">Ander e-mailadres of nieuwe mail aanvragen</button></p>
+    </div></div>`;
+  $('#inCode').focus();
+  $('#btnAnderAdres').addEventListener('click', () => { LS.del('lt:inlog'); renderInloggen(); });
+  $('#frmCode').addEventListener('submit', async e => {
+    e.preventDefault();
+    const knop = $('#frmCode button'), code = $('#inCode').value.replace(/\s+/g, '');
+    if (!/^\d{6,10}$/.test(code)) { $('#codeMelding').innerHTML = `<div class="melding fout" style="margin-top:12px">De inlogcode bestaat uit cijfers (meestal 6). Kijk nog even in de mail.</div>`; return; }
+    knop.disabled = true;
+    try {
+      await Opslag.verifieerCode(email, code);
+      LS.del('lt:inlog');
+      start();
+    } catch (err) { $('#codeMelding').innerHTML = `<div class="melding fout" style="margin-top:12px">${esc(err.message)}</div>`; knop.disabled = false; }
   });
 }
 function renderProefKeuze() {
