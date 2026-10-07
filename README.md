@@ -26,22 +26,25 @@ Webapp voor Project Levertekorten (Mosadex). Apothekers beoordelen ieder zelfsta
 ## Voor de apothekers (beoordelen)
 
 1. Open de link en vul je e-mailadres in. Klik in de e-mail die je krijgt op de inloglink. De app onthoudt je daarna in die browser.
-2. De tekorten staan als kaarten klaar, gesorteerd op Prio.
-   - Per alternatief kies je **Akkoord**, **Niet akkoord** of **Bespreken**, met eventueel een toelichting. Die is altijd optioneel.
+2. Je ziet **steeds één tekort** met de voorgestelde alternatieven, gesorteerd op Prio. De app begint bij het eerste tekort dat je nog niet (helemaal) hebt beoordeeld.
+   - Per alternatief kies je **Akkoord**, **Niet akkoord** of **Bespreken**. Een toelichting is altijd optioneel: bij *Niet akkoord* en *Bespreken* staat het veld direct open, bij *Akkoord* klik je op *+ Toelichting toevoegen*.
    - Klik nogmaals op een gekozen oordeel om het te wissen.
-   - Alles wordt direct opgeslagen; rechtsboven staat "✓ Opgeslagen".
+   - Klik onderaan op **Volgende tekort**. Wil je een tekort later doen, dan heet die knop **Overslaan, later doen**. Met **Vorige** ga je terug.
+   - Alles wordt direct opgeslagen; rechtsboven staat "✓ Opgeslagen". Je kunt altijd stoppen en later verdergaan.
    - Valt de verbinding weg, dan bewaart de app je wijzigingen en slaat ze vanzelf op zodra er weer verbinding is.
-3. **Zelf een ander alternatief voorstellen:** klik bij een tekort op *+ Ander alternatief voorstellen*.
+   - Ben je klaar, dan zegt de app dat. Je hoeft niets op te sturen.
+3. **Lijst van alle tekorten:** met deze knop zie je alle tekorten onder elkaar, met filters en zoeken (bijvoorbeeld om een bepaald tekort terug te vinden). Met **Stap voor stap beoordelen** ga je terug.
+4. **Zelf een ander alternatief voorstellen:** klik bij een tekort op *+ Ander alternatief voorstellen*.
    - Zoek in de Z-index op stofnaam, artikelnaam, PRK of ZI-nummer.
    - Kies daarna de categorie en de positie in de cascade.
    - De app waarschuwt als de toedieningsweg afwijkt of als het PRK al in de lijst staat.
-   - Het tabblad **Geen alternatief** bevat de tekorten zonder voorstel.
-4. **Sneltoetsen:**
+   - De tekorten zonder voorstel staan in de lijstweergave op het tabblad **Geen alternatief**.
+5. **Sneltoetsen** (op een computer):
    - **J** / **K**: volgende of vorige regel
    - **A**: akkoord, **N**: niet akkoord, **B**: bespreken
    - **T**: naar het toelichtingsveld
    - **Esc**: uit het toelichtingsveld
-5. **Exporteren** geeft een back-up van je beoordeling (JSON). **Excel** geeft een leesbaar overzicht.
+6. Onder **Meer** (rechtsboven) staan een back-up van je beoordeling (JSON) en een leesbaar overzicht in Excel. Die zijn niet nodig: alles staat al in de gedeelde database.
 
 ## Voor de coördinator
 

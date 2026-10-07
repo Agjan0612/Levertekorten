@@ -18,11 +18,13 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 4 | Gekozen voor een **gedeelde webapp**: GitHub Pages voor de link, Supabase voor de gedeelde opslag. Een gedeelde map of claude.ai viel af (zie §3). | Gebouwd: deze repository |
 | 5 | Supabase-project aangemaakt en ingericht via de Supabase-connector, en de app eraan gekoppeld | Gedaan |
 | 6 | GitHub Pages aangezet, Supabase URL-instelling gedaan, panel (3 apothekers) in de database gezet | Gedaan (7 okt) |
-| 7 | De eerste echte inlogtest met het panel | **Open** (zie §7) |
+| 7 | Beoordelaarsscherm vernieuwd: **stap voor stap** (één tekort per scherm) als standaard, gekozen uit drie ontwerpopties; de lijst blijft bereikbaar | Gedaan (7 okt), op branch `claude/gifted-einstein-fu5kim` |
+| 8 | De eerste echte inlogtest met het panel | **Open** (zie §7) |
 
 ## 3. Genomen besluiten
 
 **Werkwijze en beoordeling**
+- **Beoordelaarsscherm (7 okt):** standaard *stap voor stap*: één tekort per scherm, grote knoppen, onderaan *Volgende tekort* / *Overslaan, later doen* en *Vorige*. Start bij het eerste open tekort; *Volgende* slaat tekorten over die al af zijn. Korte uitleg bij de eerste keer, een eindscherm "Klaar". De oude lijst (met filters en tabbladen) blijft bereikbaar via *Lijst van alle tekorten*; de keuze wordt per browser onthouden (`lt:modus`). Back-up/Excel staan onder *Meer*. Categorieën in gewone taal (code in de tooltip). Ontwerpopties: https://claude.ai/artifact/CiqMq9fee5AFEPkMa4PJQW (privé).
 - **Eindoordeel:** minimaal **twee apothekers moeten het eens zijn** (`MIN_EENS = 2` in `js/kern.js`).
   - Minimaal twee keer Akkoord → **Akkoord**.
   - Minimaal twee keer Niet akkoord → **Afgewezen**.
@@ -80,7 +82,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 
 - `node --test tests/kern.test.js`: 7 tests, onder meer alle 64 combinaties van drie oordelen en het formaat van het laadbestand.
 - `tests/rls/draai.sh`: 23 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
-- `node tests/e2e/gedeeld.js`: 26 controles van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen.
+- `node tests/e2e/gedeeld.js`: 42 controles van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
 - Nog niet getest: de echte inlogmail en GitHub Pages, omdat die nog niet aanstonden. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
 
 ## 7. Openstaande punten

@@ -8,6 +8,8 @@ const {APP, MIN_EENS, Fout, voornaam, CATEGORIEEN, CAT_UITLEG, OORDEEL_LABEL, OA
 
 let BRON = null, ZINDEX = null, GEBRUIKER = null, WERK = null, C = null, VIEW = null;
 let TAB = 'alt', CTAB = 'overzicht', ACTIEF = null;
+// Beoordelen: 'stap' = één tekort per scherm (standaard), 'lijst' = alle tekorten onder elkaar met filters
+let MODUS = 'stap', STAP = 0, STAP_EINDE = false;
 const FILTER = {klasse: '', niveau: '', open: false, zoek: ''};
 const CFILTER = {bespreken: 'open', alle: '', zoek: '', voorstel: 'open'};
 const FORMS = {}; // open voorstel-formulieren per tekort
@@ -86,6 +88,7 @@ function maakWerkmap(bladen) {
 }
 
 function renderTabs() {
+  if (!$('#tabs')) return; // stapweergave heeft geen tabbladen
   const tabs = [['alt', 'Tekorten met alternatieven', BRON.tekorten.length], ['geen', 'Geen alternatief', BRON.geenAlt.length], ['mijn', 'Mijn voorstellen', WERK.voorstellen.length]];
   $('#tabs').innerHTML = tabs.map(([k, l, n]) => `<button data-tab="${k}" class="${TAB === k ? 'actief' : ''}">${l} <span class="n">(${n})</span></button>`).join('');
   $$('#tabs button').forEach(b => b.addEventListener('click', () => { TAB = b.dataset.tab; renderLijst(); window.scrollTo(0, 0); }));
@@ -96,6 +99,7 @@ function updateVoortgang() {
   const el = $('#vgTekst'); if (!el) return;
   el.innerHTML = `<b>${n}</b> van ${tot} regels beoordeeld · ${WERK.voorstellen.length} eigen voorstel${WERK.voorstellen.length === 1 ? '' : 'len'}`;
   $('#vgVul').style.width = (tot ? 100 * n / tot : 0) + '%';
+  updateStapBalk();
 }
 
 function zoekMatch(q, ...velden) { q = q.trim().toLowerCase(); if (!q) return true; return velden.some(v => String(v ?? '').toLowerCase().includes(q)); }
@@ -135,6 +139,8 @@ function renderLijst() {
   if (ACTIEF) { const r = el.querySelector(`.regel[data-key="${CSS.escape(ACTIEF)}"]`); if (r) r.classList.add('actief'); }
 }
 
+function badgeVoorraad(k) { return k ? `<span class="badge klasse ${klasseCls(k)}" title="Voorraadklasse bij Mosadex">Voorraad Mosadex: ${esc(k)}</span>` : ''; }
+
 function infoRegel(label, waarde, cls = '') { return waarde == null || waarde === '' ? '' : `<div class="${cls}"><b>${esc(label)}</b><span>${esc(waarde)}</span></div>`; }
 
 function htmlTekortInfo(prk, basis) {
@@ -166,7 +172,7 @@ function htmlTekortKaart(t, zicht) {
   const [n, tot] = tekortVoortgangTekst(t);
   return `<section class="kaart" data-tekort="${esc(t.prk)}">
     <div class="k-kop"><span class="prio">Prio ${esc(fmtNum(t.prio))}</span><h2>${esc(t.stofnaam)}</h2><span class="prk">PRK ${esc(t.prk)}</span>
-      ${t.voorraadklasse ? `<span class="badge klasse ${klasseCls(t.voorraadklasse)}">${esc(t.voorraadklasse)}</span>` : ''}
+      ${badgeVoorraad(t.voorraadklasse)}
       <span class="k-vg ${n === tot ? 'klaar' : ''}" data-vg="${esc(t.prk)}">${n} van ${tot} beoordeeld</span></div>
     ${htmlTekortInfo(t.prk, t)}
     <div class="regels-kop"><div>Vlg</div><div>Alternatief</div><div>Categorie · niveau</div><div>Onderbouwing en bronnen</div><div>Jouw oordeel</div></div>
@@ -178,7 +184,7 @@ function htmlTekortKaart(t, zicht) {
 function htmlGeenAltKaart(g) {
   return `<section class="kaart" data-tekort="${esc(g.prk)}">
     <div class="k-kop"><span class="prio">Prio ${esc(fmtNum(g.prio))}</span><h2>${esc(g.stofnaam)}</h2><span class="prk">PRK ${esc(g.prk)}</span>
-      ${g.voorraadklasse ? `<span class="badge klasse ${klasseCls(g.voorraadklasse)}">${esc(g.voorraadklasse)}</span>` : ''}
+      ${badgeVoorraad(g.voorraadklasse)}
       <span class="k-vg">geen alternatief in de lijst</span></div>
     ${htmlTekortInfo(g.prk, g)}
     ${htmlVoorstellenBlok(g.prk)}
@@ -202,12 +208,12 @@ function htmlZiControle(r) {
 
 function htmlRegel(r) {
   const oo = WERK.oordelen[r.key] || {}, o = oo.o || '', t = oo.t || '';
-  return `<div class="regel ${o ? 'o-' + o : ''}" data-key="${esc(r.key)}">
+  return `<div class="regel ${o ? 'o-' + o : ''} ${t ? 'toel-open' : ''}" data-key="${esc(r.key)}">
     <div class="r-vlg" title="Positie in de cascade">${esc(fmtNum(r.volgorde))}</div>
     <div class="r-alt"><div class="naam">${esc(r.stofA)}</div><div class="art">${esc(r.voorbeeldA)}</div><div class="meta">PRK ${esc(r.prkAlt)}${r.atcA ? ' · ATC ' + esc(r.atcA) : ''}</div>${r.consA ? `<div class="cons">Conservering: ${esc(r.consA)}</div>` : ''}${htmlZiControle(r)}</div>
-    <div class="r-cat"><span class="cat" title="${esc(CAT_UITLEG[r.categorie] || '')}">${esc(r.categorie)}</span><span class="niv ${nivCls(r.niveau)}">${esc(r.niveau)}</span>${r.signaal ? `<div class="signaal">⚠ ${esc(r.signaal)}</div>` : ''}</div>
+    <div class="r-cat"><span class="cat" title="Code in het laadbestand: ${esc(r.categorie)}">${esc(CAT_UITLEG[r.categorie] || r.categorie)}</span><span class="niv ${nivCls(r.niveau)}">${esc(r.niveau)}</span>${r.signaal ? `<div class="signaal">⚠ ${esc(r.signaal)}</div>` : ''}</div>
     <div class="r-onder">${r.onderbouwing ? `<div>${esc(r.onderbouwing)}</div>` : ''}${htmlBronnen(r.bron)}</div>
-    <div class="r-oordeel">${htmlOordeelKnoppen(o)}<textarea class="toel" rows="2" placeholder="Toelichting (optioneel)">${esc(t)}</textarea></div>
+    <div class="r-oordeel">${htmlOordeelKnoppen(o)}<textarea class="toel" rows="2" placeholder="Toelichting (optioneel)" aria-label="Toelichting (optioneel)">${esc(t)}</textarea><button type="button" class="toel-knop" data-actie="toelOpen">+ Toelichting toevoegen (optioneel)</button></div>
   </div>`;
 }
 
@@ -432,7 +438,7 @@ function groepeerPerTekort(items, prkVan) {
 function tekortKopHtml(tp) {
   const t = BRON.tekortMap.get(tp);
   const ov = BRON.overzicht[tp] || {};
-  return `<div class="k-kop">${t ? `<span class="prio">Prio ${esc(fmtNum(t.prio))}</span>` : ''}<h2>${esc(t ? t.stofnaam : '')}</h2><span class="prk">PRK ${esc(tp)}</span>${ov.voorraadklasse ? `<span class="badge klasse ${klasseCls(ov.voorraadklasse)}">${esc(ov.voorraadklasse)}</span>` : ''}${ov.uitgesloten ? `<span style="font-size:12px;color:var(--terra)">Bewust uitgesloten: ${esc(ov.uitgesloten)}</span>` : ''}</div>`;
+  return `<div class="k-kop">${t ? `<span class="prio">Prio ${esc(fmtNum(t.prio))}</span>` : ''}<h2>${esc(t ? t.stofnaam : '')}</h2><span class="prk">PRK ${esc(tp)}</span>${badgeVoorraad(ov.voorraadklasse)}${ov.uitgesloten ? `<span style="font-size:12px;color:var(--terra)">Bewust uitgesloten: ${esc(ov.uitgesloten)}</span>` : ''}</div>`;
 }
 
 function renderCBespreken(u) {
@@ -605,6 +611,7 @@ function htmlBronnen(s) {
 }
 
 function renderBeoordelaar() {
+  if (MODUS === 'stap') return renderStap();
   renderBeoordelaarKop();
   const klassen = [...new Set(BRON.regels.map(r => r.voorraadklasse).filter(Boolean))];
   const niveaus = [...new Set(BRON.regels.map(r => r.niveau).filter(Boolean))];
@@ -619,6 +626,7 @@ function renderBeoordelaar() {
         <span class="telling" id="telling"></span>
       </div>
       <div class="sneltoetsen"><kbd>J</kbd>/<kbd>K</kbd> volgende/vorige · <kbd>A</kbd> akkoord · <kbd>N</kbd> niet akkoord · <kbd>B</kbd> bespreken · <kbd>T</kbd> toelichting</div>
+      <button type="button" class="knop" data-actie="naarStap">Stap voor stap beoordelen</button>
     </div>
     <div class="tabs" id="tabs"></div>
     <div id="lijst"></div>`;
@@ -627,6 +635,100 @@ function renderBeoordelaar() {
   $('#fZoek').addEventListener('input', zet);
   renderLijst();
   updateVoortgang();
+}
+
+/* ---------- Stap voor stap: één tekort per scherm ---------- */
+const tekortOpen = t => t.keys.some(k => !geldigOordeel(WERK.oordelen[k]));
+function eersteOpenStap(vanaf = 0) {
+  const i = BRON.tekorten.findIndex((t, j) => j >= vanaf && tekortOpen(t));
+  return i;
+}
+function uitlegGezien() { return !!LS.get('lt:uitleg-gezien'); }
+function renderStap() {
+  renderBeoordelaarKop();
+  const tot = BRON.tekorten.length;
+  STAP = Math.max(0, Math.min(tot - 1, STAP));
+  $('#main').innerHTML = `${bronMeldingenHtml()}
+    <div class="stap-balk">
+      <div class="voortgang"><div class="vg-tekst" id="vgTekst"></div><div class="vg-bar"><div id="vgVul"></div></div></div>
+      <span class="stap-nr" id="stapNr"></span>
+      <button type="button" class="knop" data-actie="naarLijst">Lijst van alle tekorten</button>
+    </div>
+    ${uitlegGezien() ? '' : `<div class="uitleg">
+      <div><b>Zo werkt het</b><ol>
+        <li>Je ziet steeds één tekort met de voorgestelde alternatieven.</li>
+        <li>Kies per alternatief <b>Akkoord</b>, <b>Niet akkoord</b> of <b>Bespreken</b>. Een toelichting is niet verplicht.</li>
+        <li>Klik op <b>Volgende tekort</b>. Alles wordt meteen opgeslagen; je kunt altijd stoppen en later verdergaan.</li>
+      </ol></div>
+      <button type="button" class="knop" data-actie="uitlegWeg">Begrepen</button></div>`}
+    <div id="lijst" class="stap-lijst"></div>
+    <div class="stap-onder" id="stapOnder"><div class="rij">
+      <button type="button" class="knop groot" data-actie="stapVorige">Vorige</button>
+      <span class="stap-status" id="stapStatus"></span>
+      <button type="button" class="knop groot" data-actie="stapVolgende" id="btnVolgende"></button>
+    </div></div>`;
+  renderStapInhoud();
+  updateVoortgang();
+}
+function renderStapInhoud() {
+  const el = $('#lijst'); if (!el) return;
+  ACTIEF = null;
+  $('#stapOnder').classList.toggle('verborgen', STAP_EINDE);
+  if (STAP_EINDE) { el.innerHTML = htmlStapEinde(); updateStapBalk(); return; }
+  const t = BRON.tekorten[STAP];
+  if (!t) { el.innerHTML = `<div class="leeg-staat">Er staan geen tekorten met alternatieven in de lijst.</div>`; return; }
+  const ov = BRON.overzicht[t.prk] || {};
+  const route = ZINDEX ? ZINDEX.routeVan.get(t.prk) : '';
+  const chip = (txt, cls = '') => txt ? `<span class="chip ${cls}">${esc(txt)}</span>` : '';
+  el.innerHTML = `<section class="stap" data-tekort="${esc(t.prk)}">
+    <div class="stap-tekort">
+      <div class="boven"><span class="prio">Prio ${esc(fmtNum(t.prio))}</span><span>Tekort · PRK ${esc(t.prk)}</span></div>
+      <h2>${esc(t.stofnaam)}</h2>
+      ${t.voorbeeld ? `<div class="vb">Voorbeeld: ${esc(t.voorbeeld)}</div>` : ''}
+      <div class="chips">${t.voorraadklasse ? chip('Voorraad Mosadex: ' + t.voorraadklasse, klasseCls(t.voorraadklasse) === 'k2' ? '' : 'rood') : ''}${ov.dagenTot != null && ov.dagenTot !== '' ? chip('Weer leverbaar: ' + (isNaN(ov.dagenTot) ? ov.dagenTot : 'over ' + fmtNum(ov.dagenTot) + ' dagen')) : ''}${chip(route)}${ov.alGepubliceerd === 'ja' ? chip('Al gepubliceerd advies') : ''}</div>
+      ${t.indicatie || ov.indicatie ? `<div class="ind"><b>Indicatie:</b> ${esc(t.indicatie || ov.indicatie)}</div>` : ''}
+      ${ov.uitgesloten ? `<div class="ind let"><b>Bewust niet voorgesteld:</b> ${esc(ov.uitgesloten)}</div>` : ''}
+      <details class="meer"><summary>Meer gegevens</summary>${htmlTekortInfo(t.prk, t)}</details>
+    </div>
+    <p class="stap-vraag">Is dit een goed alternatief? Kies per alternatief.</p>
+    <div class="regels">${t.keys.map(k => htmlRegel(BRON.regelMap.get(k))).join('')}</div>
+    ${htmlVoorstellenBlok(t.prk)}
+  </section>`;
+  if (FORMS[t.prk]) renderVoorstelForm(t.prk);
+  updateStapBalk();
+}
+function htmlStapEinde() {
+  const open = BRON.regels.filter(r => !geldigOordeel(WERK.oordelen[r.key])).length;
+  const nT = BRON.tekorten.filter(tekortOpen).length;
+  const geen = BRON.geenAlt.length ? `<p class="klein">Optioneel: bij <a href="#" data-actie="naarGeenAlt">${BRON.geenAlt.length} tekorten zonder alternatief</a> kun je zelf een alternatief voorstellen.</p>` : '';
+  if (!open) return `<section class="stap-einde"><div class="vink" aria-hidden="true">✓</div><h2>Klaar, dank je wel!</h2>
+    <p>Je hebt alle ${BRON.regels.length} alternatieven beoordeeld. Alles is opgeslagen; je hoeft niets op te sturen. Tot het panelbesluit kun je je oordelen nog aanpassen.</p>
+    ${geen}<p><button type="button" class="knop groot" data-actie="stapBegin">Mijn oordelen nog eens bekijken</button></p></section>`;
+  return `<section class="stap-einde"><h2>Je bent bij het einde van de lijst</h2>
+    <p>Er ${open === 1 ? 'is' : 'zijn'} nog <b>${open}</b> alternatie${open === 1 ? 'f' : 'ven'} open bij ${nT} tekort${nT === 1 ? '' : 'en'} die je hebt overgeslagen.</p>
+    <p><button type="button" class="knop groot primair" data-actie="stapEersteOpen">Naar het eerste open tekort</button></p>${geen}</section>`;
+}
+function updateStapBalk() {
+  const st = $('#stapStatus'); if (!st || MODUS !== 'stap') return;
+  const t = BRON.tekorten[STAP];
+  $('#stapNr').textContent = STAP_EINDE ? '' : `Tekort ${STAP + 1} van ${BRON.tekorten.length}`;
+  if (!t || STAP_EINDE) return;
+  const [n, tot] = tekortVoortgangTekst(t);
+  st.textContent = n === tot ? `Alle ${tot} alternatieven beoordeeld` : `${n} van ${tot} beoordeeld`;
+  const knop = $('#btnVolgende');
+  knop.textContent = n === tot ? 'Volgende tekort' : 'Overslaan, later doen';
+  knop.classList.toggle('primair', n === tot);
+  $('[data-actie=stapVorige]').disabled = STAP === 0;
+}
+function gaNaarStap(i, einde = false) {
+  STAP_EINDE = einde;
+  if (!einde) STAP = i;
+  renderStapInhoud();
+  window.scrollTo(0, 0);
+}
+function stapVolgende() {
+  const i = eersteOpenStap(STAP + 1);
+  if (i >= 0) gaNaarStap(i); else gaNaarStap(STAP, true);
 }
 
 function renderCTabs() {
@@ -759,6 +861,10 @@ async function startBeoordelaar() {
   try { WERK = {beoordelaar: GEBRUIKER.naam, ...(await Opslag.mijnWerk(BRON.vingerafdruk))}; }
   catch (e) { return toonFout('Je beoordelingen konden niet worden opgehaald.', e); }
   TAB = 'alt';
+  MODUS = LS.get('lt:modus') === 'lijst' ? 'lijst' : 'stap';
+  STAP_EINDE = false;
+  STAP = eersteOpenStap();
+  if (STAP < 0) { STAP = 0; STAP_EINDE = true; }
   renderBeoordelaar();
   if (!Object.keys(WERK.oordelen).length) biedOvernameAan();
 }
@@ -771,13 +877,16 @@ async function biedOvernameAan() {
   if (!per.size) return;
   if (!await bevestig('Oordelen overnemen?', `<p>Er is een nieuwe versie van de lijst (<b>${esc(BRON.bestand)}</b>). Je hebt ${per.size} regel(s) die ook in deze versie staan al eerder beoordeeld.</p><p>Wil je die oordelen overnemen? Je kunt ze daarna gewoon aanpassen.</p>`, 'Overnemen')) return;
   for (const [k, r] of per) { WERK.oordelen[k] = {o: r.o, t: r.t, tijd: new Date().toISOString()}; Opslag.zetOordeel(BRON.vingerafdruk, k, WERK.oordelen[k]); }
-  renderLijst(); updateVoortgang();
+  renderBeoordelaar();
   toast(`${per.size} oordelen overgenomen.`, 'ok');
 }
 function renderBeoordelaarKop() {
-  renderKop(`<button class="knop" id="btnExpJson" title="Download een back-up van je beoordeling">Exporteren</button>
-    <button class="knop" id="btnExpXlsx" title="Je beoordeling als leesbaar Excel-bestand">Excel</button>
-    <button class="knop" id="btnImp" title="Zet een eerder geëxporteerde beoordeling terug">Importeren</button>`);
+  renderKop(`<details class="meer-menu"><summary class="knop">Meer</summary><div class="menu">
+    <p>Je oordelen worden automatisch opgeslagen. Deze knoppen zijn alleen nodig voor een eigen kopie.</p>
+    <button class="knop" id="btnExpJson" title="Download een back-up van je beoordeling">Back-up downloaden</button>
+    <button class="knop" id="btnExpXlsx" title="Je beoordeling als leesbaar Excel-bestand">Overzicht in Excel</button>
+    <button class="knop" id="btnImp" title="Zet een eerder geëxporteerde beoordeling terug">Back-up terugzetten</button></div></details>`);
+  $$('.meer-menu .menu button').forEach(b => b.addEventListener('click', () => b.closest('details').removeAttribute('open')));
   $('#btnExpJson').addEventListener('click', exporteerBeoordeling);
   $('#btnExpXlsx').addEventListener('click', exporteerBeoordelingXlsx);
   $('#btnImp').addEventListener('click', importeerBeoordeling);
@@ -826,15 +935,31 @@ async function bewaarVoorstel(tekortPrk) {
   toast('Voorstel opgeslagen.', 'ok');
 }
 
+/* Menu "Meer" sluiten bij een klik ernaast */
+document.addEventListener('click', e => { $$('.meer-menu[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); }); });
+
 /* Gebeurtenissen in de beoordelaarslijst (één luisteraar voor alles) */
 document.addEventListener('click', async e => {
   if (VIEW !== 'beoordelen' || !$('#lijst')) return;
+  const link = e.target.closest('a[data-actie=naarGeenAlt]');
+  if (link) { e.preventDefault(); MODUS = 'lijst'; LS.set('lt:modus', MODUS); TAB = 'geen'; renderBeoordelaar(); window.scrollTo(0, 0); return; }
   const knop = e.target.closest('button');
   const regel = e.target.closest('.regel[data-key]');
   if (regel && !e.target.closest('a')) zetActief(regel.dataset.key, false);
   if (!knop) return;
   if (knop.dataset.o && regel) { zetOordeel(regel.dataset.key, knop.dataset.o); return; }
   const a = knop.dataset.actie;
+  if (a === 'toelOpen' && regel) { regel.classList.add('toel-open'); $('textarea', regel).focus(); return; }
+  if (a === 'uitlegWeg') { LS.set('lt:uitleg-gezien', true); const u = $('.uitleg'); if (u) u.remove(); return; }
+  if (a === 'stapVolgende') return stapVolgende();
+  if (a === 'stapVorige') { if (STAP > 0) gaNaarStap(STAP - 1); return; }
+  if (a === 'stapBegin') return gaNaarStap(0);
+  if (a === 'stapEersteOpen') { const i = eersteOpenStap(); return gaNaarStap(i < 0 ? 0 : i, i < 0); }
+  if (a === 'naarLijst' || a === 'naarStap') {
+    MODUS = a === 'naarLijst' ? 'lijst' : 'stap'; LS.set('lt:modus', MODUS);
+    if (MODUS === 'stap') { STAP = eersteOpenStap(); STAP_EINDE = STAP < 0; if (STAP < 0) STAP = 0; }
+    renderBeoordelaar(); window.scrollTo(0, 0); return;
+  }
   if (a === 'nieuwVoorstel') { FORMS[knop.dataset.tekort] = {positie: null}; renderVoorstelForm(knop.dataset.tekort); const z = $(`.vs-form[data-form="${CSS.escape(knop.dataset.tekort)}"] .vs-zoek`); if (z) z.focus(); }
   else if (a === 'annuleerVoorstel') { delete FORMS[knop.dataset.tekort]; renderVoorstelForm(knop.dataset.tekort); }
   else if (a === 'bewaarVoorstel') bewaarVoorstel(knop.dataset.tekort);
@@ -843,7 +968,7 @@ document.addEventListener('click', async e => {
     if (!await bevestig('Voorstel verwijderen', `<p>Weet je zeker dat je het voorstel <b>${esc(v.generiek)}</b> (PRK ${esc(v.prk)}) bij ${esc(v.tekortNaam)} wilt verwijderen?</p>`, 'Verwijderen')) return;
     try { await Opslag.verwijderVoorstel(v.id); } catch (err) { return toast(err.message, 'fout'); }
     WERK.voorstellen = WERK.voorstellen.filter(x => x.id !== v.id);
-    if (TAB === 'mijn') renderLijst(); else { vervangVoorstellenBlok(v.tekortPrk); renderTabs(); }
+    if (MODUS === 'lijst' && TAB === 'mijn') renderLijst(); else { vervangVoorstellenBlok(v.tekortPrk); renderTabs(); }
     updateVoortgang();
   } else if (a === 'gaNaar') {
     TAB = knop.dataset.soort === 'geen' ? 'geen' : 'alt';
@@ -855,6 +980,7 @@ document.addEventListener('click', async e => {
 document.addEventListener('input', e => {
   if (VIEW !== 'beoordelen' || !e.target.classList.contains('toel')) return;
   const regel = e.target.closest('.regel[data-key]'); if (!regel) return;
+  if (e.target.value) regel.classList.add('toel-open'); // getypte toelichting blijft zichtbaar, ook als het oordeel later Akkoord wordt
   zetToelichting(regel.dataset.key, e.target.value);
 });
 document.addEventListener('focusin', e => {
@@ -878,7 +1004,7 @@ document.addEventListener('keydown', e => {
     if ((WERK.oordelen[ACTIEF] || {}).o === map[k]) return; // sneltoets wist niet; klik daarvoor op de knop
     zetOordeel(ACTIEF, map[k]);
     verplaatsActief(1);
-  } else if (k === 't') { e.preventDefault(); $('textarea', el).focus(); }
+  } else if (k === 't') { e.preventDefault(); el.classList.add('toel-open'); $('textarea', el).focus(); }
 });
 
 /* Export / import (back-up) */
