@@ -14,24 +14,12 @@ Statische webapp (GitHub Pages) waarmee apothekers ieder zelfstandig alternatiev
 - Tests: `node --test tests/kern.test.js`, `tests/rls/draai.sh` (lokale PostgreSQL), `node tests/e2e/gedeeld.js` (Playwright, nagebootste Supabase).
 - Het OA-laadbestand moet exact blijven: `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie`, UTF-8 zonder BOM, CRLF. Namen letterlijk overnemen (ook dubbele spaties).
 
-## Openstaande taak: Supabase inrichten (via de Supabase-connector)
+## Supabase
 
-Status bij overdracht: code staat klaar en is getest. `js/config.js` is nog leeg (app draait in proefmodus). GitHub Pages moet de gebruiker zelf aanzetten (Settings → Pages → Source: GitHub Actions); daarna de workflow opnieuw draaien.
+Project `levertekorten` (ref `obmjttyruqyqprulojbv`, regio eu-central-1, organisatie "Levertekorten", gratis plan) is ingericht volgens `supabase/schema.sql`. `js/config.js` bevat de URL en de *publishable* sleutel (die mag openbaar zijn; de service-role-sleutel **nooit** in de repository).
 
-Stappen met de Supabase-MCP-tools:
-1. `list_organizations`. Geen organisatie? Vraag de gebruiker eerst een (gratis) account op supabase.com te maken.
-2. `get_cost` (type project) → `confirm_cost` → `create_project` met naam `levertekorten`, regio `eu-central-1` (Frankfurt). Het gratis plan volstaat; noem de kosten (€0) expliciet voordat je bevestigt.
-3. Wacht met `get_project` tot de status `ACTIVE_HEALTHY` is.
-4. `apply_migration` met naam `schema` en als query de volledige inhoud van `supabase/schema.sql`.
-5. Vraag de gebruiker om de e-mailadressen en namen van het panel (Jan Feenstra, Femke Dieker, Arnout Janse; Arnout is ook coördinator). Voeg ze toe met `execute_sql`: `insert into public.panel (email, naam, beoordelaar, coordinator) values (...) on conflict (email) do update set ...`. E-mailadressen in kleine letters. **Zet nooit e-mailadressen of panelnamen in de repository** (die is openbaar).
-6. `get_project_url` en de anon/publishable-sleutel ophalen (`get_publishable_keys` of `get_anon_key`). Zet ze in `js/config.js`, commit en push naar `main`. De anon-sleutel mag openbaar zijn; de service-role-sleutel **nooit**.
-7. Controleer met `get_advisors` (security) dat er geen RLS-waarschuwingen zijn.
-8. **Eén handmatige stap voor de gebruiker** (de connector kan dit niet): Supabase-dashboard → Authentication → URL Configuration:
-   - *Site URL* = het Pages-adres (zie Settings → Pages; waarschijnlijk `https://agjan0612.github.io/Levertekorten/`);
-   - hetzelfde adres toevoegen bij *Redirect URLs*.
-
-   Zonder deze stap stuurt de inlogmail naar `localhost`. Leg de klikken stap voor stap uit.
-9. Optioneel: Authentication → Emails → Magic Link, Nederlandse tekst (laat `{{ .ConfirmationURL }}` staan).
-10. Eerste echte test met de gebruiker: inloggen via de link, een oordeel geven en wisselen naar Coördineren.
-
-Gratis Supabase-projecten pauzeren na ongeveer een week zonder gebruik. Herstellen kan met `restore_project` of in het dashboard.
+- **Let op bij de Supabase-connector:** SQL met `drop …` (ook `drop … if exists`) of `apply_migration` liep vast (time-out na 60 s, vermoedelijk een bevestigingsvraag die niet verschijnt). Voer wijzigingen uit als `execute_sql` in kleine stukken, zonder `drop`, of laat de gebruiker het SQL-script in de SQL Editor plakken.
+- **Panel:** beheer met `execute_sql` (`insert … on conflict (email) do update …`). **Zet nooit e-mailadressen of panelnamen in de repository** (die is openbaar).
+- **Advisors:** 3 waarschuwingen "SECURITY DEFINER function executable" (`is_beoordelaar`, `is_coordinator`, `mijn_profiel`) zijn bewust. Ze geven alleen informatie over de ingelogde gebruiker zelf, en de RLS-regels hebben ze nodig.
+- **Handmatige stap voor de gebruiker:** Authentication → URL Configuration → *Site URL* en *Redirect URLs* = het Pages-adres (`https://agjan0612.github.io/Levertekorten/`). Zonder die stap stuurt de inlogmail naar localhost.
+- Gratis projecten pauzeren na ongeveer een week zonder gebruik; herstellen kan met `restore_project`.

@@ -23,7 +23,7 @@ create table if not exists public.panel (
 -- ---------- Hulpfuncties ----------
 -- E-mailadres van wie is ingelogd (uit het inlogbewijs van Supabase).
 create or replace function public.mijn_email() returns text
-  language sql stable
+  language sql stable set search_path = public
   as $$ select lower(coalesce(auth.jwt() ->> 'email', '')) $$;
 
 -- "security definer": deze functies mogen de tabel panel lezen, ook als de
@@ -91,7 +91,7 @@ create table if not exists public.coordinatie (
 
 -- ---------- "gewijzigd" automatisch bijwerken ----------
 create or replace function public.zet_gewijzigd() returns trigger
-  language plpgsql as $$ begin new.gewijzigd := now(); return new; end $$;
+  language plpgsql set search_path = public as $$ begin new.gewijzigd := now(); return new; end $$;
 drop trigger if exists oordelen_gewijzigd on public.oordelen;
 create trigger oordelen_gewijzigd before update on public.oordelen for each row execute function public.zet_gewijzigd();
 drop trigger if exists besluiten_gewijzigd on public.besluiten;
@@ -103,7 +103,7 @@ create trigger coordinatie_gewijzigd before update on public.coordinatie for eac
 revoke all on public.panel, public.oordelen, public.voorstellen, public.besluiten, public.coordinatie from anon;
 grant select on public.panel to authenticated;
 grant select, insert, update, delete on public.oordelen, public.voorstellen, public.besluiten, public.coordinatie to authenticated;
-revoke execute on function public.mijn_profiel(), public.is_beoordelaar(), public.is_coordinator() from anon;
+revoke execute on function public.mijn_profiel(), public.is_beoordelaar(), public.is_coordinator(), public.mijn_email() from public, anon;
 grant execute on function public.mijn_profiel(), public.is_beoordelaar(), public.is_coordinator(), public.mijn_email() to authenticated;
 
 alter table public.panel       enable row level security;
