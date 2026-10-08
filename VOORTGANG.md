@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 8 oktober 2026, ochtend. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 8 oktober 2026, middag. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -86,44 +86,46 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 | Database | 5 tabellen (`panel`, `oordelen`, `voorstellen`, `besluiten`, `coordinatie`), 11 toegangsregels, live bijwerken aan voor 4 tabellen. Getest in de echte database (blind, coördinator ziet alles, geen toegang zonder inlog). |
 | Advisors | 3 bewuste waarschuwingen over SECURITY DEFINER-functies (zie `CLAUDE.md`) |
 
-**Let op bij de Supabase-connector:** SQL met `drop …` en `apply_migration` liepen vast (time-out). In kleine stukken via `execute_sql`, zonder `drop`, lukt het wel.
+**Let op bij de Supabase-connector:** SQL met `drop …`, `delete …` en `apply_migration` liepen vast (time-out). In kleine stukken via `execute_sql`, zonder `drop`/`delete`, lukt het wel; wissen doet de opdrachtgever in de SQL Editor. De connector kan ook geen Auth-instellingen (SMTP, mailsjablonen) wijzigen: dat gaat via het dashboard.
+
+**Supabase Auth:** naast het panel staat er één extra inlogaccount (een tweede adres van de opdrachtgever, gebruikt bij de eerste mailtest, niet op de panellijst). Onschuldig: zonder panelregel ziet dat account niets.
 
 ## 6. Tests (laatste stand: alles geslaagd)
 
 - `node --test tests/kern.test.js`: 7 tests, onder meer alle 64 combinaties van drie oordelen en het formaat van het laadbestand.
 - `tests/rls/draai.sh`: 23 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
-- `node tests/e2e/gedeeld.js`: 54 controles (12 nieuw voor inlogcode en inlogknop, 7 okt) (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
-- Inlogmail via Brevo getest op 7 okt op twee zakelijke adressen van de opdrachtgever (o.a. het ncontrol-adres op de panellijst): mail aangekomen (bij ncontrol na ~2 minuten), link werkte, inloggen gelukt. Geen voorafgaande klik door een mailscanner gezien. De opdrachtgever heeft daarna geoefend met beoordelen (48 oordelen, goed opgeslagen); die oefenoordelen zijn gewist, alle tabellen zijn weer leeg. Nog niet getest bij de andere twee panelleden. De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
+- `node tests/e2e/gedeeld.js`: 54 controles van de hele werkwijze in de browser met drie apothekers (ook op GitHub groen bij PR #1, #3 en #4). Onder meer: inloggen (code, knop uit de mail, "Ik heb al een inlogcode"), live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave.
+- **Met de echte Supabase en Brevo** (7–8 okt, adressen van de opdrachtgever): inlogmail komt aan (bij ncontrol na ~2 minuten), inloggen met de oude link, met de **code** en via de **knop** geslaagd; geen vooraf geopende link door een mailscanner gezien. Oefenen met beoordelen werkte (48 oordelen opgeslagen); die zijn gewist, alle tabellen zijn leeg.
+- Nog niet getest: inloggen door de andere twee panelleden (andere mailservers), en de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie). Vanuit Claude's omgeving is `github.io` niet bereikbaar; controleren gaat via de status van de workflow.
 
 ## 7. Openstaande punten
 
-**A. Eerst oplossen, vóór de beoordelaars de link krijgen (blokkades) — beide opgelost, het panel kan de link krijgen**
-1. ~~**Eigen mailservice (SMTP) koppelen.**~~ **Gedaan (7 okt)** via Brevo, zie §5. Aandachtspunten:
-   - De Brevo-SMTP-sleutel vervalt na **1 jaar (7 okt 2027)** en ook na **90 dagen zonder gebruik** (kan gebeuren tussen rondes). Dan komen er geen inlogmails meer. Oplossing: in Brevo (⚙️ → SMTP & API → SMTP) een nieuwe sleutel maken en die in Supabase → Authentication → Emails → SMTP Settings als *Password* plakken. Bestaande sleutels en de API-sleutel van de MBO-app niet aanraken; in Brevo **niet** "Activate for SMTP keys" (IP-blokkade) aanzetten, want Supabase mailt vanaf wisselende adressen.
+**A. Blokkades vóór het panel de link krijgt — opgelost (7–8 okt)**
+1. ~~Eigen mailservice (SMTP).~~ Gedaan via Brevo, zie §5. Aandachtspunten:
+   - De Brevo-SMTP-sleutel vervalt na **1 jaar (7 okt 2027)** en ook na **90 dagen zonder gebruik** (kan gebeuren tussen rondes). Dan komen er geen inlogmails meer. Oplossing: in Brevo (⚙️ → SMTP & API → SMTP) een nieuwe sleutel maken en die in Supabase → Authentication → Emails → SMTP Settings als *Password* plakken. Bestaande afzenders/sleutels van de MBO-app niet aanraken; in Brevo **niet** "Activate for SMTP keys" (IP-blokkade) aanzetten.
    - Later eventueel een netter afzenderdomein (bijv. van Mosadex): alleen de SMTP-instellingen in Supabase wijzigen, de app zelf niet.
-2. ~~**Inloggen met een code.**~~ **Gedaan (live 7 okt, getest 8 okt):** beide sjablonen ingesteld; inloggen met de code en via de knop geslaagd op het ncontrol-adres (één `/verify` per keer, geen vooraf geopende link). Zakelijke mailscanners openen links vooraf; een inloglink werkt maar één keer. Belangrijk inzicht: link en code zijn bij Supabase **hetzelfde eenmalige inlogbewijs**, dus een vooraf geopende `{{ .ConfirmationURL }}` maakt ook de code ongeldig. Daarom:
-   - de knop in de mail gaat naar de app met `?inlog={{ .TokenHash }}`; de app logt pas in na een klik op *Inloggen* (`verifyOtp({token_hash, type: 'email'})`), een scanner klikt niet;
-   - daaronder de code `{{ .Token }}` (`verifyOtp({email, token, type: 'email'})`), in te vullen in de app; het adres wordt 1 uur onthouden (localStorage `lt:inlog`), en "Ik heb al een inlogcode" werkt ook in een andere browser;
-   - mailsjabloon: `supabase/inlogmail.html`, onderwerp *Inloggen: beoordeling alternatieven*, in **beide** sjablonen *Confirm signup* (nieuwe gebruikers, zoals de andere panelleden) en *Magic Link* (bestaande gebruikers).
-   - **Volgorde:** eerst de PR samenvoegen en de publicatie afwachten, dan pas de sjablonen in Supabase aanpassen (de oude app kent `?inlog=` en het codeveld niet). Oude mails met de gewone link blijven werken.
-Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen van de opdrachtgever; de link werd niet vooraf "opgebruikt". Punt 2 is daardoor minder dringend, maar blijft een vangnet voor de adressen van de andere panelleden. Meenemen: bij "Er is een inloglink gestuurd" vermelden dat het een paar minuten kan duren.
+2. ~~Inloggen met een code.~~ Gedaan (live 7 okt via PR #3, getest 8 okt). Link en code zijn bij Supabase **hetzelfde eenmalige inlogbewijs**; een vooraf geopende `{{ .ConfirmationURL }}` maakt ook de code ongeldig. Daarom:
+   - de knop in de mail gaat naar de app met `?inlog={{ .TokenHash }}`; de app logt pas in na een klik op *Inloggen* (`verifyOtp({token_hash, type: 'email'})`);
+   - daaronder de code `{{ .Token }}` (`verifyOtp({email, token, type: 'email'})`); het adres wordt 1 uur onthouden (localStorage `lt:inlog`), "Ik heb al een inlogcode" werkt ook in een andere browser;
+   - mailsjabloon `supabase/inlogmail.html`, onderwerp *Inloggen: beoordeling alternatieven*, ingesteld in **beide** sjablonen *Confirm signup* (nieuwe gebruikers) en *Magic Link* (bestaande gebruikers).
+3. ~~Handleidingen bijwerken.~~ Gedaan (8 okt, PR #4), zie §3.
 
 **B. Daarna samen**
-3. De eerste echte test: inloggen (met code), oordelen geven, tweede apotheker, Coördineren, laadbestand. Daarna de proefoordelen wissen (via `execute_sql`) zodat het panel leeg begint.
+3. **Panel uitnodigen (volgende stap).** De opdrachtgever stuurt de andere twee panelleden een mail met de link, de inloguitleg en de beoordelaarshandleiding (bijlage of online link). Een kant-en-klare tekst is op 8 okt in de chat opgesteld (onderwerp "Beoordelingspanel levertekorten: de app staat klaar"; datums nog in te vullen). Mail naar de adressen op de panellijst. Daarna kijkt Claude in `auth_logs` of hun inlog lukt (vooral: openen hun mailscanners de knop vooraf?).
+3a. Eerste echte ronde: oordelen van meerdere apothekers, Coördineren (Bespreken, Voorstellen), laadbestand en logboek controleren.
 4. Testen met de echte gepubliceerde lijst van 16-09, zodra de opdrachtgever die aanlevert.
 5. **Vraag aan de opdrachtgever:** voegt OA een laadbestand *toe* aan de bestaande tabel, of *vervangt* het die? Bij vervangen zijn alle bestaande adviezen weg als de gepubliceerde lijst niet is geladen (de app waarschuwt wel).
 
 **C. Bekende beperkingen (gevonden 7 okt), later oplossen**
-- **Pauzeren:** gratis project pauzeert na ~7 dagen zonder gebruik, dus zeker tussen rondes. Voorstel: GitHub Action (cron) die elke paar dagen de database aanroept. Herstellen kan via het dashboard of `restore_project`.
+- **Pauzeren:** gratis project pauzeert na ~7 dagen zonder gebruik, dus zeker tussen rondes. Voorstel: GitHub Action (cron) die elke paar dagen de database aanroept (ongeveer een uur werk; op 8 okt besproken, opdrachtgever wilde eerst handleidingen en panelmail). Herstellen kan via het dashboard of `restore_project`. NB: beoordelaars blijven wel ingelogd na een lange pauze (de sessie verloopt op het gratis plan niet vanzelf); alleen een andere browser/computer, wissen van browsergegevens of uitloggen vraagt een nieuwe inlogmail.
 - **Back-ups:** op het gratis plan zijn database-back-ups niet te downloaden. Advies aan de coördinator: knop *Back-up* na elk overleg en vóór elke publicatie.
 - **Nieuwe lijstversie halverwege een ronde:** oordelen kunnen per beoordelaar worden overgenomen (alleen als die in de nieuwe versie nog niets heeft), maar **besluiten** (Bespreken/Voorstellen) en de geladen **gepubliceerde lijst** gaan niet mee (gekoppeld aan de vingerafdruk van de bron). Advies: lijst niet wijzigen tijdens een ronde; anders meenemen van besluiten bouwen.
 - **Panelwijziging:** iemand uit `panel` halen ⇒ diens oordelen tellen niet meer mee. Met een **vierde** beoordelaar kan het 2–2 worden; `consensus()` in `js/kern.js` geeft dan *Akkoord* (telt akkoord eerst). Eerst aanpassen als het panel groeit.
-- **Openbare inlogpagina:** `shouldCreateUser: true`; iedereen kan een inloglink aanvragen (komt niet verder dan "niet op de panellijst", RLS houdt alles tegen) en zo de maillimiet opmaken. Oplossing: CAPTCHA of aanmelden dichtzetten zodra het panel compleet is.
+- **Openbare inlogpagina:** `shouldCreateUser: true`; iedereen kan een inlogmail aanvragen (komt niet verder dan "niet op de panellijst", RLS houdt alles tegen) en zo de maillimiet opmaken. Oplossing: CAPTCHA of aanmelden dichtzetten zodra het panel compleet is.
 - **Gedeelde/beheerde werkplekken** die browsergegevens wissen: elke keer opnieuw inloggen (kost een mail), en wijzigingen die offline in de wachtrij staan blijven in die ene browser.
 - Kleiner: na een update tot ~10 min de oude versie (Ctrl+F5); een andere opbouw van de Excel laat het publiceren mislukken (oude lijst blijft online, GitHub mailt); voor de AVG biedt Supabase standaard een verwerkersovereenkomst (data in Frankfurt).
 
 **D. Overige ideeën**
-- Nederlandse inlogmail (komt mee met punt A2).
 - Coördinatorscherm: zichtbare knop "besluit wissen" (nu: nogmaals klikken), categorie-keuzelijst bij Voorstellen breder, kleine grijze tekst iets donkerder.
 - **Gegevens:** twee gepubliceerde alternatieven bij PRK 133612 (PRK 49026 en 49034, prednisolon drank) staan niet meer in de Z-index. Het panel zal die waarschijnlijk afwijzen.
 - **GitHub Actions:** waarschuwing dat Node 20 verouderd is. Later de actions bijwerken.
@@ -132,4 +134,4 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 
 Start een sessie met de repository **Levertekorten**, met de Supabase-connector aan, en begin bijvoorbeeld met:
 
-> Lees VOORTGANG.md en CLAUDE.md. We gaan verder bij de openstaande punten, te beginnen met §7A (eigen mailservice en inlogcode). [Vermeld wat je al hebt gedaan, bijvoorbeeld: "Ik heb een account bij Resend aangemaakt."]
+> Lees VOORTGANG.md en CLAUDE.md. Ik heb de panelleden de link gestuurd [of: nog niet]. Kijk in de logboeken of zij al hebben ingelogd en of dat goed ging. Daarna gaan we verder met §7B (eerste echte ronde) of §7C (pauzeren voorkomen).
