@@ -1,6 +1,6 @@
 :root{
   --blauw:#005E97; --lichtblauw:#009FE3; --terra:#C3502E;
-  --g1:#595959; --g2:#797979; --g3:#F2F2F2; --rand:#D9D9D9; --wit:#fff;
+  --g1:#4d4d4d; --g2:#636363; --g3:#F2F2F2; --rand:#D9D9D9; --wit:#fff;
   --blauw-zacht:#E5EFF5; --lichtblauw-zacht:#E3F4FC; --terra-zacht:#F8E9E4;
 }
 *{box-sizing:border-box}
@@ -177,6 +177,9 @@ textarea:focus,input:focus,select:focus{outline:2px solid var(--lichtblauw);outl
 .slot .status.fout{color:var(--terra)}
 .slot small{color:var(--g2);display:block}
 .slot .knoppen{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap}
+.slot a.knop{text-decoration:none;display:inline-block}
+.slot.achter{border-color:var(--terra);box-shadow:inset 4px 0 0 var(--terra)}
+.achter-label{margin-top:6px;font-size:12px;font-weight:bold;color:var(--terra)}
 .tegels{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
 .tegel{background:#fff;border:1px solid var(--rand);border-top:4px solid var(--g2);border-radius:6px;padding:12px 14px}
 .tegel .getal{font-size:28px;font-weight:bold;color:var(--g1)}
@@ -207,7 +210,10 @@ textarea:focus,input:focus,select:focus{outline:2px solid var(--lichtblauw);outl
 .besluit .knoppenrij button[data-b=akkoord].aan{background:var(--blauw);border-color:var(--blauw);color:#fff}
 .besluit .knoppenrij button[data-b=afgewezen].aan{background:var(--terra);border-color:var(--terra);color:#fff}
 .besluit input[type=text],.besluit select,.besluit input[type=number]{width:100%;padding:5px 7px;border:1px solid var(--rand);border-radius:4px;margin-bottom:4px;background:#fff}
-.besluit .klein-veld{display:grid;grid-template-columns:1fr 70px;gap:4px}
+.besluit .klein-veld{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--g1);margin-bottom:4px}
+.besluit .klein-veld input[type=number]{width:70px;margin-bottom:0}
+.besluit .wis-besluit{border:0;background:none;padding:0 0 6px;color:var(--terra);font-size:12px;cursor:pointer;text-decoration:underline}
+.besluit .wis-besluit:hover{color:#9a3a1d}
 table.tabel{width:100%;border-collapse:collapse;background:#fff;font-size:13px}
 table.tabel th{background:var(--blauw);color:#fff;text-align:left;padding:6px 8px;position:sticky;top:58px;font-weight:bold}
 table.tabel td{padding:5px 8px;border-bottom:1px solid var(--g3);vertical-align:top}
