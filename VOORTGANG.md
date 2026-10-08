@@ -24,7 +24,8 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Beide **opgelost** (7–8 okt, zie §5 en §7A) |
 | 11 | Inlogcode + "klik eerst"-knop gebouwd en live gezet via [PR #3](https://github.com/Agjan0612/Levertekorten/pull/3); Nederlandse mailsjablonen in Supabase ingesteld; met de echte inlogmail getest (code én knop) | Gedaan (7–8 okt) |
 | 12 | Coördinatorscherm gebruiksvriendelijker (punten 7–11 uit de UI-analyse van 7 okt): zichtbare knop *Besluit wissen*, categorieën in gewone taal (ook bij Voorstellen), paneltegels markeren wie het verst achterloopt met een knop *Herinnering mailen* (mailto, verstuurt niets zelf), uitleg bij *Back-up* (tooltip, melding, blok in Export), grijze tekst donkerder | Gebouwd 8 okt (branch `claude/gracious-ritchie-50oji0`), nog niet samengevoegd |
-| 13 | De eerste echte inlogtest met het panel | **Open** |
+| 13 | Database wakker houden: functie `wakker()` (alleen `true`, voor anon) en workflow *Database wakker houden* die hem elke drie dagen aanroept | Gebouwd 8 okt; functie staat in de echte database |
+| 14 | De eerste echte inlogtest met het panel | **Open** |
 
 ## 3. Genomen besluiten
 
@@ -54,7 +55,7 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 **Gegevens**
 - De lijst met tekorten en de Z-index mogen openbaar staan (toestemming van de opdrachtgever). De oordelen, namen en e-mailadressen niet.
 - Een nieuwe lijst of Z-index zet je in `invoer/`. Een nieuwe versie van de lijst krijgt eigen oordelen; de app biedt aan om eerdere oordelen over te nemen voor regels die in beide versies staan.
-- **Handleidingen** (Word + HTML, beoordelaars en coördinator) staan sinds 8 okt in `handleidingen/`; de HTML-versies staan ook online naast de app (`https://agjan0612.github.io/Levertekorten/handleidingen/Handleiding_beoordelaars_levertekorten.html`). De panelnamen zijn eruit gehaald (de repository is openbaar); de coördinatorhandleiding verwijst naar de tabel `panel` in Supabase. Bijgewerkt op 8 okt: inloggen met knop en code (hoofdstuk 2 beoordelaars, 4 nieuwe schermafbeeldingen) en een paragraaf "De inlogmail: hoe het is ingericht" (coördinator, hoofdstuk 10). Middag 8 okt: coördinatorhandleiding bijgewerkt voor de nieuwe knoppen (besluit wissen, herinnering mailen, back-up), en schermafbeeldingen vernieuwd met **verzonnen namen** (Pieter de Vries, Sanne Bakker; alleen de opdrachtgever bij naam). In de eerdere versies stonden in de schermafbeeldingen nog de echte namen van twee panelleden; die oude versies staan nog wel in de geschiedenis van de repository.
+- **Handleidingen** (Word + HTML, beoordelaars en coördinator) staan sinds 8 okt in `handleidingen/`; de HTML-versies staan ook online naast de app (`https://agjan0612.github.io/Levertekorten/handleidingen/Handleiding_beoordelaars_levertekorten.html`). De panelnamen zijn eruit gehaald (de repository is openbaar); de coördinatorhandleiding verwijst naar de tabel `panel` in Supabase. Bijgewerkt op 8 okt: inloggen met knop en code (hoofdstuk 2 beoordelaars, 4 nieuwe schermafbeeldingen) en een paragraaf "De inlogmail: hoe het is ingericht" (coördinator, hoofdstuk 10). Middag 8 okt: coördinatorhandleiding bijgewerkt voor de nieuwe knoppen (besluit wissen, herinnering mailen, back-up), en schermafbeeldingen vernieuwd met **verzonnen namen** (Pieter de Vries, Sanne Bakker; alleen de opdrachtgever bij naam). In de eerdere versies stonden in de schermafbeeldingen nog de echte namen van twee panelleden; die oude versies staan nog wel in de geschiedenis van de repository. Ze zijn nooit naar de panelleden verstuurd. **Besluit (8 okt):** de geschiedenis voorlopig niet wissen (wissen is niet terug te draaien); kan later alsnog.
 
 **Werkwijze met Claude**
 - Claude werkt op een eigen branch (`claude/…`). Online komt het pas na samenvoegen in `main` (pull request). Dat gebeurt alleen na akkoord van de opdrachtgever; daarna publiceert GitHub de app vanzelf.
@@ -84,7 +85,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 | Inlogmail (SMTP) | Via **Brevo**, het account van de MBO-app van de opdrachtgever (gratis plan, 300 mails per dag, gedeeld met de MBO-app). Afzender `Levertekorten <levertekorten@mbo-app.nl>`; het domein mbo-app.nl is bij Brevo geauthenticeerd (DKIM + DMARC). Host `smtp-relay.brevo.com`, poort 587, eigen SMTP-sleutel "Supabase Levertekorten" (los van de MBO-app; staat alleen in Supabase). Maillimiet in Supabase: 30 per uur. Ingesteld 7 okt. |
 | Supabase-URL | `https://obmjttyruqyqprulojbv.supabase.co` (staat in `js/config.js`) |
 | Sleutel in de app | *publishable* sleutel (bedoeld als openbaar). De service-role-sleutel staat nergens en hoort er ook niet. |
-| Database | 5 tabellen (`panel`, `oordelen`, `voorstellen`, `besluiten`, `coordinatie`), 11 toegangsregels, live bijwerken aan voor 4 tabellen. Getest in de echte database (blind, coördinator ziet alles, geen toegang zonder inlog). |
+| Database | 5 tabellen (`panel`, `oordelen`, `voorstellen`, `besluiten`, `coordinatie`), 11 toegangsregels, live bijwerken aan voor 4 tabellen. Functie `wakker()` (8 okt) is het enige wat zonder inlog aan te roepen is; ze geeft alleen `true`. Getest in de echte database (blind, coördinator ziet alles, geen toegang zonder inlog). |
 | Advisors | 3 bewuste waarschuwingen over SECURITY DEFINER-functies (zie `CLAUDE.md`) |
 
 **Let op bij de Supabase-connector:** SQL met `drop …` en `apply_migration` liepen vast (time-out). In kleine stukken via `execute_sql`, zonder `drop`, lukt het wel.
@@ -92,7 +93,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 ## 6. Tests (laatste stand: alles geslaagd)
 
 - `node --test tests/kern.test.js`: 7 tests, onder meer alle 64 combinaties van drie oordelen en het formaat van het laadbestand.
-- `tests/rls/draai.sh`: 23 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
+- `tests/rls/draai.sh`: 25 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
 - `node tests/e2e/gedeeld.js`: 59 controles (12 voor inlogcode en inlogknop, 7 okt; 5 voor het coördinatorscherm, 8 okt) (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
 - Inlogmail via Brevo getest op 7 okt op twee zakelijke adressen van de opdrachtgever (o.a. het ncontrol-adres op de panellijst): mail aangekomen (bij ncontrol na ~2 minuten), link werkte, inloggen gelukt. Geen voorafgaande klik door een mailscanner gezien. De opdrachtgever heeft daarna geoefend met beoordelen (48 oordelen, goed opgeslagen); die oefenoordelen zijn gewist, alle tabellen zijn weer leeg. Nog niet getest bij de andere twee panelleden. De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
 
@@ -107,7 +108,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
    - daaronder de code `{{ .Token }}` (`verifyOtp({email, token, type: 'email'})`), in te vullen in de app; het adres wordt 1 uur onthouden (localStorage `lt:inlog`), en "Ik heb al een inlogcode" werkt ook in een andere browser;
    - mailsjabloon: `supabase/inlogmail.html`, onderwerp *Inloggen: beoordeling alternatieven*, in **beide** sjablonen *Confirm signup* (nieuwe gebruikers, zoals de andere panelleden) en *Magic Link* (bestaande gebruikers).
    - **Volgorde:** eerst de PR samenvoegen en de publicatie afwachten, dan pas de sjablonen in Supabase aanpassen (de oude app kent `?inlog=` en het codeveld niet). Oude mails met de gewone link blijven werken.
-Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen van de opdrachtgever; de link werd niet vooraf "opgebruikt". Punt 2 is daardoor minder dringend, maar blijft een vangnet voor de adressen van de andere panelleden. Meenemen: bij "Er is een inloglink gestuurd" vermelden dat het een paar minuten kan duren.
+Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen van de opdrachtgever; de link werd niet vooraf "opgebruikt". Punt 2 is daardoor minder dringend, maar blijft een vangnet voor de adressen van de andere panelleden. De melding dat de mail een paar minuten kan duren staat inmiddels in de app.
 
 **B. Daarna samen**
 3. De eerste echte test: inloggen (met code), oordelen geven, tweede apotheker, Coördineren, laadbestand. Daarna de proefoordelen wissen (via `execute_sql`) zodat het panel leeg begint.
@@ -115,7 +116,7 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 5. **Vraag aan de opdrachtgever:** voegt OA een laadbestand *toe* aan de bestaande tabel, of *vervangt* het die? Bij vervangen zijn alle bestaande adviezen weg als de gepubliceerde lijst niet is geladen (de app waarschuwt wel).
 
 **C. Bekende beperkingen (gevonden 7 okt), later oplossen**
-- **Pauzeren:** gratis project pauzeert na ~7 dagen zonder gebruik, dus zeker tussen rondes. Voorstel: GitHub Action (cron) die elke paar dagen de database aanroept. Herstellen kan via het dashboard of `restore_project`.
+- ~~**Pauzeren**~~ **Opgelost (8 okt):** de workflow `.github/workflows/wakker-houden.yml` roept elke drie dagen (05:23 UTC op dag 1, 4, 7, … van de maand) `rpc/wakker` aan met de publieke sleutel uit `js/config.js`. Mislukt dat, dan wordt de workflow rood en mailt GitHub. Pauzeert het project toch: herstellen via het dashboard of `restore_project`. **Let op:** GitHub zet geplande workflows in een openbare repository uit na 60 dagen zonder wijzigingen in de repository (mailt vooraf); weer aanzetten via Actions → *Database wakker houden* → *Enable workflow*.
 - **Back-ups:** op het gratis plan zijn database-back-ups niet te downloaden. Advies aan de coördinator: knop *Back-up* na elk overleg en vóór elke publicatie.
 - **Nieuwe lijstversie halverwege een ronde:** oordelen kunnen per beoordelaar worden overgenomen (alleen als die in de nieuwe versie nog niets heeft), maar **besluiten** (Bespreken/Voorstellen) en de geladen **gepubliceerde lijst** gaan niet mee (gekoppeld aan de vingerafdruk van de bron). Advies: lijst niet wijzigen tijdens een ronde; anders meenemen van besluiten bouwen.
 - **Panelwijziging:** iemand uit `panel` halen ⇒ diens oordelen tellen niet meer mee. Met een **vierde** beoordelaar kan het 2–2 worden; `consensus()` in `js/kern.js` geeft dan *Akkoord* (telt akkoord eerst). Eerst aanpassen als het panel groeit.
@@ -137,6 +138,6 @@ Start een sessie met de repository **Levertekorten**, met de Supabase-connector 
 >
 > Stand van mijn kant: [bijvoorbeeld: ik heb de panelleden de link en de handleiding gestuurd op …].
 >
-> Wat ik vandaag wil: [bijvoorbeeld: kijk in de logboeken of de panelleden al hebben ingelogd / het pauzeren van Supabase voorkomen (§7C) / de eerste echte ronde doorlopen (§7B)].
+> Wat ik vandaag wil: [bijvoorbeeld: kijk in de logboeken of de panelleden al hebben ingelogd / de eerste echte ronde doorlopen (§7B)].
 >
 > Werk op een eigen branch. Maak een pull request en voeg samen alleen als ik dat vraag. Werk na afloop VOORTGANG.md bij.

@@ -81,6 +81,11 @@ do $$ begin
   perform count(*) from oordelen;
   raise exception 'MISLUKT: niet-ingelogd kon oordelen lezen';
 exception when insufficient_privilege then raise notice 'ok: niet-ingelogd kan niets lezen'; end $$;
+select pg_temp.verwacht(public.wakker(), 'niet-ingelogd kan de database wakker houden (wakker() geeft true)');
+do $$ begin
+  perform * from mijn_profiel();
+  raise exception 'MISLUKT: niet-ingelogd kon mijn_profiel aanroepen';
+exception when insufficient_privilege then raise notice 'ok: niet-ingelogd kan verder geen functies aanroepen'; end $$;
 reset role;
 
 -- Realtime-publicatie bevat de tabellen; gewijzigd wordt bijgewerkt
