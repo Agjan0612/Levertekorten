@@ -97,7 +97,7 @@ Zolang `js/config.js` leeg is, draait de app in **proefmodus**. Je kiest dan een
 
 ## Bekende beperkingen
 
-- **Pauzeren:** een gratis Supabase-project wordt na ongeveer een week zonder gebruik gepauzeerd. Herstel het dan in het Supabase-dashboard (*Restore project*). De gegevens blijven bewaard.
+- **Pauzeren:** een gratis Supabase-project wordt na ongeveer een week zonder gebruik gepauzeerd. De workflow *Database wakker houden* voorkomt dat: die roept de database elke drie dagen aan, en GitHub mailt als dat mislukt. Is het project toch gepauzeerd, herstel het dan in het Supabase-dashboard (*Restore project*). De gegevens blijven bewaard. Na 60 dagen zonder wijzigingen in de repository zet GitHub de workflow uit; zet hem dan weer aan via *Actions → Database wakker houden → Enable workflow*.
 - **Inlogmails:** gaan via een eigen mailservice (maximaal 30 per uur). Per adres kan maar één mail per minuut worden aangevraagd. Zakelijke mailservers houden een mail soms een paar minuten vast; vraag dan niet meteen een nieuwe aan.
 - **Openbare gegevens:** de lijst en de Z-index staan openbaar in deze repository en op de site. De oordelen, namen en e-mailadressen staan alleen in de database.
 - **De coördinator ziet alles:** wie coördinator is, kan de oordelen van iedereen lezen, ook als die persoon zelf beoordeelt.

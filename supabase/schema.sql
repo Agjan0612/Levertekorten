@@ -106,6 +106,15 @@ grant select, insert, update, delete on public.oordelen, public.voorstellen, pub
 revoke execute on function public.mijn_profiel(), public.is_beoordelaar(), public.is_coordinator(), public.mijn_email() from public, anon;
 grant execute on function public.mijn_profiel(), public.is_beoordelaar(), public.is_coordinator(), public.mijn_email() to authenticated;
 
+-- ---------- Wakker houden ----------
+-- Een gratis Supabase-project pauzeert na ongeveer een week zonder gebruik. De workflow
+-- .github/workflows/wakker-houden.yml roept daarom elke drie dagen deze functie aan (zonder inlog).
+-- Ze geeft alleen 'true' terug en leest geen tabellen.
+create or replace function public.wakker() returns boolean
+  language sql stable set search_path = '' as $$ select true $$;
+revoke execute on function public.wakker() from public;
+grant execute on function public.wakker() to anon, authenticated;
+
 alter table public.panel       enable row level security;
 alter table public.oordelen    enable row level security;
 alter table public.voorstellen enable row level security;

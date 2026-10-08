@@ -1,0 +1,31 @@
+# Een gratis Supabase-project pauzeert na ongeveer een week zonder gebruik.
+# Deze workflow roept daarom elke drie dagen de database aan (functie wakker() in
+# supabase/schema.sql). Mislukt de aanroep, dan wordt de workflow rood en mailt
+# GitHub; het project is dan waarschijnlijk toch gepauzeerd (zie VOORTGANG.md).
+name: Database wakker houden
+
+on:
+  schedule:
+    - cron: '23 5 */3 * *'   # om 05:23 UTC op dag 1, 4, 7, … van de maand
+  workflow_dispatch:
+
+jobs:
+  aanroepen:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Database aanroepen
+        run: |
+          # adres en publieke sleutel staan al in de app
+          URL=$(grep -o "https://[a-z0-9]*\.supabase\.co" js/config.js)
+          KEY=$(grep -o "sb_publishable_[A-Za-z0-9_-]*" js/config.js)
+          ANTWOORD=$(curl -sS --retry 3 --retry-delay 30 --max-time 60 -X POST "$URL/rest/v1/rpc/wakker" \
+            -H "apikey: $KEY" -H "content-type: application/json" -d '{}' -w ' HTTP %{http_code}' || true)
+          echo "Antwoord van de database: $ANTWOORD"
+          if [ "$ANTWOORD" != "true HTTP 200" ]; then
+            echo "::error::De database reageert niet zoals verwacht. Waarschijnlijk is het Supabase-project gepauzeerd: open het Supabase-dashboard en klik op 'Restore project' (of vraag het aan Claude)."
+            exit 1
+          fi
+          echo "De database is wakker."
