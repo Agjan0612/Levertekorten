@@ -20,7 +20,7 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 6 | GitHub Pages aangezet, Supabase URL-instelling gedaan, panel (3 apothekers) in de database gezet; eerste publicatie geslaagd | Gedaan (7 okt) |
 | 7 | UI-analyse met screenshots (Playwright); drie ontwerpopties voor het beoordelaarsscherm gemaakt; opdrachtgever koos **optie B: stap voor stap** | Gedaan (7 okt) |
 | 8 | Optie B gebouwd en live gezet via [PR #1](https://github.com/Agjan0612/Levertekorten/pull/1) (samengevoegd in `main`, gepubliceerd) | Gedaan (7 okt) |
-| 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt), bewust **niet** in de repository (zie §3) |
+| 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt); op 8 okt bijgewerkt voor het nieuwe inloggen en in de repository gezet (`handleidingen/`, zonder panelnamen) |
 | 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Mailservice **opgelost** (7 okt, Brevo, zie §5); inlogcode nog open (zie §7) |
 | 11 | Inlogcode + "klik eerst"-knop gebouwd en live gezet via [PR #3](https://github.com/Agjan0612/Levertekorten/pull/3); Nederlandse mailsjablonen in Supabase ingesteld; met de echte inlogmail getest (code én knop) | Gedaan (7–8 okt) |
 | 12 | De eerste echte inlogtest met het panel | **Open** |
@@ -53,7 +53,7 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 **Gegevens**
 - De lijst met tekorten en de Z-index mogen openbaar staan (toestemming van de opdrachtgever). De oordelen, namen en e-mailadressen niet.
 - Een nieuwe lijst of Z-index zet je in `invoer/`. Een nieuwe versie van de lijst krijgt eigen oordelen; de app biedt aan om eerdere oordelen over te nemen voor regels die in beide versies staan.
-- **Handleidingen** (Word + HTML, beoordelaars en coördinator) staan niet in de repository: de coördinatorhandleiding noemt de panelnamen en de repository is openbaar. De opdrachtgever heeft de bestanden. Opnieuw maken kan met dezelfde aanpak als de screenshots (zie `CLAUDE.md`).
+- **Handleidingen** (Word + HTML, beoordelaars en coördinator) staan sinds 8 okt in `handleidingen/`; de HTML-versies staan ook online naast de app (`https://agjan0612.github.io/Levertekorten/handleidingen/Handleiding_beoordelaars_levertekorten.html`). De panelnamen zijn eruit gehaald (de repository is openbaar); de coördinatorhandleiding verwijst naar de tabel `panel` in Supabase. Bijgewerkt op 8 okt: inloggen met knop en code (hoofdstuk 2 beoordelaars, 4 nieuwe schermafbeeldingen) en een paragraaf "De inlogmail: hoe het is ingericht" (coördinator, hoofdstuk 10).
 
 **Werkwijze met Claude**
 - Claude werkt op een eigen branch (`claude/…`). Online komt het pas na samenvoegen in `main` (pull request). Dat gebeurt alleen na akkoord van de opdrachtgever; daarna publiceert GitHub de app vanzelf.
