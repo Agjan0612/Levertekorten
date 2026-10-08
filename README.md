@@ -25,6 +25,8 @@ Webapp voor Project Levertekorten (Mosadex). Apothekers beoordelen ieder zelfsta
 
 ## Voor de apothekers (beoordelen)
 
+Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handleidingen/`](handleidingen/): één voor de beoordelaars en één voor de coördinator. De HTML-versies staan ook online, bijvoorbeeld [de handleiding voor de beoordelaars](https://agjan0612.github.io/Levertekorten/handleidingen/Handleiding_beoordelaars_levertekorten.html).
+
 1. Open de link en vul je e-mailadres in. Je krijgt een e-mail (dat kan een paar minuten duren). Klik op de knop in de mail en daarna in de app op **Inloggen**. Werkt de knop niet, of meldt hij "verlopen"? Typ dan de **inlogcode** uit dezelfde mail in de app. De app onthoudt je daarna in die browser.
 2. Je ziet **steeds één tekort** met de voorgestelde alternatieven, gesorteerd op Prio. De app begint bij het eerste tekort dat je nog niet (helemaal) hebt beoordeeld.
    - Per alternatief kies je **Akkoord**, **Niet akkoord** of **Bespreken**. Een toelichting is altijd optioneel: bij *Niet akkoord* en *Bespreken* staat het veld direct open, bij *Akkoord* klik je op *+ Toelichting toevoegen*.
