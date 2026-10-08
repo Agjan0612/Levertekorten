@@ -31,7 +31,7 @@ function toast(msg, soort = '') {
   const el = document.createElement('div');
   el.className = 'toast ' + soort; el.textContent = msg;
   $('#toasts').appendChild(el);
-  setTimeout(() => el.remove(), soort === 'fout' ? 9000 : 4000);
+  setTimeout(() => el.remove(), Math.max(soort === 'fout' ? 9000 : 4000, msg.length * 60));
 }
 
 function download(naam, inhoud, type) {
@@ -260,7 +260,7 @@ function htmlVoorstellenBlok(tekortPrk) {
 function htmlVoorstelItem(v) {
   return `<div class="vs-item"><div class="r-vlg" title="Gewenste positie in de cascade">${esc(fmtNum(v.positie))}</div>
     <div><div class="naam">${esc(v.generiek)}</div><div class="meta">${esc(v.voorbeeld)}${v.zi ? ' (ZI ' + esc(v.zi) + ')' : ''} · PRK ${esc(v.prk)}${v.atc ? ' · ATC ' + esc(v.atc) : ''}${v.route ? ' · ' + esc(v.route) : ''}</div>
-      <div><span class="cat" style="display:inline">${esc(v.categorie)}</span></div><div style="margin-top:3px;white-space:pre-wrap">${esc(v.toelichting)}</div></div>
+      <div>${catTekst(v.categorie, true)}</div><div style="margin-top:3px;white-space:pre-wrap">${esc(v.toelichting)}</div></div>
     <div><button class="knop klein gevaar" data-actie="verwijderVoorstel" data-id="${esc(v.id)}">Verwijderen</button></div></div>`;
 }
 
@@ -379,6 +379,8 @@ function exporteerBeoordelingXlsx() {
   download(`Beoordeling_${GEBRUIKER.naam.replace(/\s+/g, '_')}_${stempel()}.xlsx`, maakWerkmap([['Beoordeling', regels, [6, 9, 40, 8, 24, 32, 10, 40, 50, 13, 50]], ['Voorstellen', vs, [10, 40, 10, 40, 50, 10, 14, 32, 8, 50]], ['Info', info, [20, 70]]]));
 }
 
+function catTekst(c, inline) { return `<span class="cat"${inline ? ' style="display:inline"' : ''} title="Code in het laadbestand: ${esc(c)}">${esc(CAT_UITLEG[c] || c)}</span>`; }
+
 function stBadge(eind, cons) { return `<span class="st ${esc(eind)}">${esc(statusLabel(eind, cons))}</span>`; }
 
 function ooBadge(o) { return o ? `<span class="oo ${o}">${OORDEEL_LABEL[o]}</span>` : `<span class="oo leeg">nog niet</span>`; }
@@ -421,10 +423,11 @@ function htmlBesprekenRij(x) {
   const r = x.r, b = x.besluit || {};
   return `<div class="bs-rij" data-key="${esc(r.key)}">
     <div class="r-vlg">${esc(fmtNum(r.volgorde))}</div>
-    <div class="r-alt"><div class="naam">${esc(r.stofA)}</div><div class="art">${esc(r.voorbeeldA)}</div><div class="meta">PRK ${esc(r.prkAlt)}</div><span class="cat">${esc(r.categorie)}</span><span class="niv ${nivCls(r.niveau)}">${esc(r.niveau)}</span>${r.signaal ? `<div class="signaal">⚠ ${esc(r.signaal)}</div>` : ''}${r.onderbouwing ? `<div style="margin-top:4px;font-size:12px;color:var(--g1)">${esc(r.onderbouwing)}</div>` : ''}${htmlBronnen(r.bron)}</div>
+    <div class="r-alt"><div class="naam">${esc(r.stofA)}</div><div class="art">${esc(r.voorbeeldA)}</div><div class="meta">PRK ${esc(r.prkAlt)}</div>${catTekst(r.categorie)}<span class="niv ${nivCls(r.niveau)}">${esc(r.niveau)}</span>${r.signaal ? `<div class="signaal">⚠ ${esc(r.signaal)}</div>` : ''}${r.onderbouwing ? `<div style="margin-top:4px;font-size:12px;color:var(--g1)">${esc(r.onderbouwing)}</div>` : ''}${htmlBronnen(r.bron)}</div>
     ${x.per.map(p => `<div><b>${esc(voornaam(p.naam))}</b> ${ooBadge(p.o)}<div class="toel ${p.t ? '' : 'leeg'}">${esc(p.t || 'geen toelichting')}</div></div>`).join('')}
     <div class="besluit"><div style="margin-bottom:4px;font-size:12px;color:var(--g1)">${esc(x.reden)} · ${stBadge(x.eind, x.cons)}</div>
       <div class="knoppenrij"><button data-b="akkoord" class="${b.b === 'akkoord' ? 'aan' : ''}">✓ Akkoord</button><button data-b="afgewezen" class="${b.b === 'afgewezen' ? 'aan' : ''}">✗ Afgewezen</button></div>
+      ${b.b ? `<button class="wis-besluit" data-b="wis" title="Het besluit weghalen; de regel staat dan weer open">✕ Besluit wissen</button>` : ''}
       <input type="text" class="notitie" placeholder="Notitie bij het besluit (optioneel)" value="${esc(b.notitie || '')}"></div>
   </div>`;
 }
@@ -450,7 +453,7 @@ function renderCBespreken(u) {
       <label><input type="radio" name="bf" value="open" ${CFILTER.bespreken === 'open' ? 'checked' : ''}> Open (${alle.filter(x => x.eind === 'bespreken').length})</label>
       <label><input type="radio" name="bf" value="besloten" ${CFILTER.bespreken === 'besloten' ? 'checked' : ''}> Besloten (${alle.filter(x => x.eind !== 'bespreken').length})</label>
       <label><input type="radio" name="bf" value="alle" ${CFILTER.bespreken === 'alle' ? 'checked' : ''}> Alle (${alle.length})</label>
-      <span class="telling">Leg na het paneloverleg per regel het eindbesluit vast; ook dan moeten minimaal twee apothekers het eens zijn. Klik nogmaals op een gekozen besluit om het te wissen.</span></div>
+      <span class="telling">Leg na het paneloverleg per regel het eindbesluit vast; ook dan moeten minimaal twee apothekers het eens zijn. Een besluit terugdraaien kan met <b>Besluit wissen</b>.</span></div>
     ${volgorde.length ? volgorde.map(tp => `<section class="kaart">${tekortKopHtml(tp)}<div class="bs-kop"><div>Vlg</div><div>Alternatief</div>${C.panel.map(p => `<div>${esc(p.naam)}</div>`).join('')}<div>Eindbesluit</div></div>${per.get(tp).map(htmlBesprekenRij).join('')}</section>`).join('') : `<div class="leeg-staat">${alle.length ? 'Geen regels in deze selectie.' : 'Er zijn geen regels om te bespreken.'}</div>`}`;
   $$('input[name=bf]').forEach(i => i.addEventListener('change', () => { CFILTER.bespreken = i.value; renderCBespreken(U()); }));
 }
@@ -459,7 +462,7 @@ function htmlVoorstelRij(v) {
   const b = v.besluit || {}, std = standaardVoorstelBesluit(v);
   const cat = b.categorie != null && b.categorie !== '' ? b.categorie : std.categorie;
   const pos = b.positie != null && b.positie !== '' ? b.positie : std.positie;
-  const kol = (wie, x) => x ? `<div><b>${wie}</b><div style="font-size:12px"><span class="cat" style="display:inline">${esc(x.categorie)}</span> · positie ${esc(fmtNum(x.positie))}</div><div class="toel">${esc(x.toelichting)}</div></div>` : `<div><b>${wie}</b><div class="toel leeg">geen voorstel</div></div>`;
+  const kol = (wie, x) => x ? `<div><b>${wie}</b><div style="font-size:12px">${catTekst(x.categorie, true)} · positie ${esc(fmtNum(x.positie))}</div><div class="toel">${esc(x.toelichting)}</div></div>` : `<div><b>${wie}</b><div class="toel leeg">geen voorstel</div></div>`;
   const max = (v.tekort ? v.tekort.aantal : 0) + 1;
   return `<div class="bs-rij" data-gk="${esc(v.gk)}">
     <div class="r-vlg">+</div>
@@ -469,7 +472,9 @@ function htmlVoorstelRij(v) {
     ${C.panel.map(p => kol(voornaam(p.naam), v.per[p.email])).join('')}
     <div class="besluit"><div style="margin-bottom:4px;font-size:12px"><span class="st ${esc(v.eind)}">${{akkoord: 'Aangenomen', afgewezen: 'Afgewezen', bespreken: esc(v.label)}[v.eind]}</span></div>
       <div class="knoppenrij"><button data-b="akkoord" class="${b.b === 'akkoord' ? 'aan' : ''}">✓ Aannemen</button><button data-b="afgewezen" class="${b.b === 'afgewezen' ? 'aan' : ''}">✗ Afwijzen</button></div>
-      <div class="klein-veld"><select class="vb-cat" title="Categorie"><option value="">– categorie –</option>${CATEGORIEEN.map(c => `<option ${cat === c ? 'selected' : ''}>${c}</option>`).join('')}</select><input type="number" class="vb-pos" min="1" max="${max}" value="${esc(pos)}" title="Positie in de cascade (1–${max})"></div>
+      ${b.b ? `<button class="wis-besluit" data-b="wis" title="Het besluit weghalen; de regel staat dan weer open">✕ Besluit wissen</button>` : ''}
+      <select class="vb-cat" title="Categorie in het laadbestand"><option value="">– kies categorie –</option>${CATEGORIEEN.map(c => `<option value="${c}" ${cat === c ? 'selected' : ''}>${esc(CAT_UITLEG[c])}</option>`).join('')}</select>
+      <label class="klein-veld">Positie in de cascade <input type="number" class="vb-pos" min="1" max="${max}" value="${esc(pos)}" title="Positie in de cascade (1–${max})"></label>
       <input type="text" class="notitie" placeholder="Notitie (optioneel)" value="${esc(b.notitie || '')}">
       ${b.b === 'akkoord' && !CATEGORIEEN.includes(b.categorie) ? '<div class="waarsch">Kies een categorie; zonder categorie gaat het voorstel niet in het laadbestand.</div>' : ''}</div>
   </div>`;
@@ -505,7 +510,7 @@ function renderCAlle(u) {
       <select id="caStatus"><option value="">Alle eindstatussen</option>${statussen.map(s => `<option value="${s}" ${CFILTER.alle === s ? 'selected' : ''}>${statusLabel(s, '')}</option>`).join('')}<option value="tegenstem" ${CFILTER.alle === 'tegenstem' ? 'selected' : ''}>Eindoordeel met afwijkend oordeel</option></select>
       <input type="search" id="caZoek" placeholder="Zoek op stofnaam of PRK" value="${esc(CFILTER.zoek)}"><span class="telling">${lijst.length} regels</span></div>
     <table class="tabel"><thead><tr><th>Prio</th><th>Tekort</th><th>Vlg</th><th>Alternatief</th><th>Categorie</th>${C.panel.map(p => `<th>${esc(voornaam(p.naam))}</th>`).join('')}<th>Eindstatus</th></tr></thead><tbody>
-    ${lijst.map(x => `<tr><td>${esc(fmtNum(x.r.prio))}</td><td class="naam">${esc(x.r.stofT)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prk)}</small></td><td>${esc(fmtNum(x.r.volgorde))}</td><td class="naam">${esc(x.r.stofA)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prkAlt)} · ${esc(x.r.niveau)}</small></td><td class="mono">${esc(x.r.categorie)}</td>${x.per.map(p => `<td>${ooBadge(p.o)}${p.t ? `<div style="font-size:12px;white-space:pre-wrap">${esc(p.t)}</div>` : ''}</td>`).join('')}<td>${stBadge(x.eind, x.cons)}${x.tegenstem && x.eind !== 'bespreken' ? ' <span class="st tegen">afwijkend oordeel</span>' : ''}${x.reden ? `<div style="font-size:12px;color:var(--g2)">${esc(x.reden)}</div>` : ''}${x.besluit && x.besluit.notitie ? `<div style="font-size:12px">${esc(x.besluit.notitie)}</div>` : ''}</td></tr>`).join('')}
+    ${lijst.map(x => `<tr><td>${esc(fmtNum(x.r.prio))}</td><td class="naam">${esc(x.r.stofT)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prk)}</small></td><td>${esc(fmtNum(x.r.volgorde))}</td><td class="naam">${esc(x.r.stofA)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prkAlt)} · ${esc(x.r.niveau)}</small></td><td>${catTekst(x.r.categorie)}</td>${x.per.map(p => `<td>${ooBadge(p.o)}${p.t ? `<div style="font-size:12px;white-space:pre-wrap">${esc(p.t)}</div>` : ''}</td>`).join('')}<td>${stBadge(x.eind, x.cons)}${x.tegenstem && x.eind !== 'bespreken' ? ' <span class="st tegen">afwijkend oordeel</span>' : ''}${x.reden ? `<div style="font-size:12px;color:var(--g2)">${esc(x.reden)}</div>` : ''}${x.besluit && x.besluit.notitie ? `<div style="font-size:12px">${esc(x.besluit.notitie)}</div>` : ''}</td></tr>`).join('')}
     </tbody></table>`;
   $('#caStatus').addEventListener('change', e => { CFILTER.alle = e.target.value; renderCAlle(U()); });
   $('#caZoek').addEventListener('input', e => { CFILTER.zoek = e.target.value; const pos = e.target.selectionStart; renderCAlle(U()); const z = $('#caZoek'); z.focus(); z.setSelectionRange(pos, pos); });
@@ -548,10 +553,13 @@ function renderCExport(u) {
       ${L.rijen.length ? '' : '<span style="color:var(--g2);margin-left:8px">Er zijn nog geen akkoord-regels.</span>'}
     </div>
     <div class="blok"><h2>Logboek (Excel)</h2><p>Het volledige consensusoverzicht: per regel alle oordelen en toelichtingen, de consensus, het besluit na overleg en of de regel in het laadbestand staat. Plus de voorstellen.</p>
-      <button class="knop" id="btnLog">Logboek exporteren</button></div>`;
+      <button class="knop" id="btnLog">Logboek exporteren</button></div>
+    <div class="blok"><h2>Back-up (extra kopie)</h2><p>Alles staat al in de database; een back-up is <b>niet verplicht</b>. Het is een extra kopie van alle oordelen, voorstellen en besluiten, voor als er iets misgaat. Supabase maakt op het gratis plan zelf geen back-ups die je kunt downloaden. Advies: maak er een na elk paneloverleg en vóór elke publicatie.</p>
+      <button class="knop" id="btnBackup2">Back-up downloaden</button></div>`;
   const chk = $('#chkVerwijder'); if (chk) chk.addEventListener('change', () => { C.coordinatie.verwijderAfgewezen = chk.checked; bewaarCoordinatie(); renderCExport(U()); });
   $('#btnCsv').addEventListener('click', () => toonCsvSamenvatting());
   $('#btnLog').addEventListener('click', exporteerLogboek);
+  $('#btnBackup2').addEventListener('click', exporteerBackup);
 }
 
 async function toonCsvSamenvatting() {
@@ -1137,7 +1145,7 @@ document.addEventListener('focusout', () => {
 function U() { return berekenUitkomsten(BRON, C.panel, C.werkPer, C.besluiten.regels, C.besluiten.voorstellen); }
 function aantalBeoordeeldDoor(email) { const w = C.werkPer[email]; return w ? BRON.regels.filter(r => geldigOordeel(w.oordelen[r.key])).length : 0; }
 function renderCoordinator() {
-  renderKop(`<span class="bewaard" id="liveStatus"></span><button class="knop" id="btnVernieuw">Vernieuwen</button><button class="knop" id="btnBackup" title="Download alle oordelen en besluiten als back-up">Back-up</button>`);
+  renderKop(`<span class="bewaard" id="liveStatus"></span><button class="knop" id="btnVernieuw">Vernieuwen</button><button class="knop" id="btnBackup" title="Extra kopie van alle oordelen en besluiten, voor de zekerheid. Niet verplicht: alles staat al in de database.">Back-up</button>`);
   $('#btnVernieuw').addEventListener('click', () => vernieuw());
   $('#btnBackup').addEventListener('click', exporteerBackup);
   $('#main').innerHTML = `${bronMeldingenHtml()}
@@ -1154,15 +1162,37 @@ function renderCoordinatorInhoud() {
   $('#coordMelding').innerHTML = C.panel.length < MIN_EENS ? `<div class="melding fout">Er staan minder dan ${MIN_EENS} beoordelaars op het panel. Voeg ze toe in Supabase (tabel <i>panel</i>).</div>` : '';
   renderCTabs();
 }
+// De beoordelaar die het minst heeft gedaan; alleen als die nog niet klaar is en niet iedereen even ver is.
+function achtersteBeoordelaar() {
+  const n = C.panel.map(x => ({email: x.email, n: aantalBeoordeeldDoor(x.email)}));
+  if (n.length < 2) return null;
+  const min = Math.min(...n.map(x => x.n)), laagst = n.filter(x => x.n === min);
+  return min < BRON.regels.length && laagst.length === 1 ? laagst[0].email : null;
+}
+function herinneringMail(x, n) {
+  const open = BRON.regels.length - n, link = location.origin + location.pathname;
+  const tekst = `Hoi ${voornaam(x.naam)},
+
+${n ? `Je hebt ${n} van de ${BRON.regels.length} alternatieven beoordeeld; er staan er nog ${open} open.` : `Je hebt nog geen alternatieven beoordeeld; er staan er ${open} klaar.`} Zou je de beoordeling willen afronden? Je gaat vanzelf verder waar je gebleven was:
+${link}
+
+Alvast bedankt!
+
+Groet,
+${voornaam(GEBRUIKER.naam) || GEBRUIKER.naam}`;
+  return `mailto:${encodeURIComponent(x.email)}?subject=${encodeURIComponent('Herinnering: beoordeling alternatieven levertekorten')}&body=${encodeURIComponent(tekst)}`;
+}
 function renderSlots() {
-  const p = C.coordinatie.gepubliceerd;
+  const p = C.coordinatie.gepubliceerd, achterste = achtersteBeoordelaar();
   const laatste = email => { const w = C.werkPer[email]; if (!w) return ''; const t = Object.values(w.oordelen).map(o => o.tijd).filter(Boolean).sort().pop(); return t ? 'laatst ' + leesbareDatum(t) : ''; };
   $('#slots').innerHTML = `
     <div class="slot"><h3>Lijst</h3><div class="status ok">${esc(BRON.bestand)}</div><small>${BRON.regels.length} regels · ${BRON.tekorten.length} tekorten · ${BRON.geenAlt.length} zonder alternatief</small></div>
-    ${C.panel.map(x => { const n = aantalBeoordeeldDoor(x.email), w = C.werkPer[x.email]; return `<div class="slot"><h3>${esc(x.naam)}</h3>
-      <div class="status ${n === BRON.regels.length ? 'ok' : n ? '' : 'leeg'}">${n} van ${BRON.regels.length} beoordeeld</div>
+    ${C.panel.map(x => { const n = aantalBeoordeeldDoor(x.email), w = C.werkPer[x.email], klaar = n === BRON.regels.length, achter = x.email === achterste; return `<div class="slot${achter ? ' achter' : ''}"><h3>${esc(x.naam)}</h3>
+      <div class="status ${klaar ? 'ok' : n ? '' : 'leeg'}">${klaar ? '✓ ' : ''}${n} van ${BRON.regels.length} beoordeeld</div>
       <div class="vg-bar" style="margin:4px 0"><div style="width:${100 * n / BRON.regels.length}%"></div></div>
-      <small>${w ? w.voorstellen.length : 0} eigen voorstel(len)${laatste(x.email) ? ' · ' + esc(laatste(x.email)) : ''}</small></div>`; }).join('')}
+      <small>${w ? w.voorstellen.length : 0} eigen voorstel(len)${laatste(x.email) ? ' · ' + esc(laatste(x.email)) : ''}</small>
+      ${achter ? '<div class="achter-label">Loopt het verst achter</div>' : ''}
+      ${!klaar && x.email !== GEBRUIKER.email ? `<div class="knoppen"><a class="knop klein" href="${esc(herinneringMail(x, n))}" title="Opent een kant-en-klare mail in je eigen mailprogramma; je verstuurt hem zelf">✉ Herinnering mailen</a></div>` : ''}</div>`; }).join('')}
     <div class="slot"><h3>Gepubliceerde lijst (optioneel)</h3>${p ? `<div class="status ok">✓ ${esc(p.bestand)}</div><small>${p.rijen.length} bestaande regels</small>` : `<div class="status leeg">Niet geladen</div><small>bijv. alternatieve-prk-regels-20260916.csv</small>`}
       <div class="knoppen"><button class="knop klein" id="btnLaadPub">${p ? 'Vervangen…' : 'Lijst laden…'}</button>${p ? '<button class="knop klein gevaar" id="btnPubWeg">Verwijderen</button>' : ''}</div></div>`;
   $('#btnLaadPub').addEventListener('click', laadGepubliceerd);
@@ -1191,6 +1221,8 @@ async function bewaarBesluit(soort, sleutel, b) {
   try { await Opslag.zetBesluit(BRON.vingerafdruk, soort, sleutel, b); return true; }
   catch (e) { if (oud) C.besluiten[deel][sleutel] = oud; else delete C.besluiten[deel][sleutel]; toast('Besluit niet opgeslagen: ' + e.message, 'fout'); return false; }
 }
+// 'wis' of nogmaals klikken op het gekozen besluit = wissen
+const nieuwBesluit = (oud, knop) => knop === 'wis' || oud === knop ? null : knop;
 function herteken(rijSel, html) { const el = $(rijSel); if (el) el.outerHTML = html; }
 /* Besluiten: één luisteraar voor de coördinatorlijsten */
 document.addEventListener('click', async e => {
@@ -1199,12 +1231,12 @@ document.addEventListener('click', async e => {
   const rij = knop.closest('.bs-rij');
   if (rij.dataset.key) {
     const k = rij.dataset.key, b = {...(C.besluiten.regels[k] || {})};
-    b.b = b.b === knop.dataset.b ? null : knop.dataset.b; b.notitie = $('.notitie', rij).value;
+    b.b = nieuwBesluit(b.b, knop.dataset.b); b.notitie = $('.notitie', rij).value;
     await bewaarBesluit('regel', k, !b.b && !b.notitie ? null : b);
     herteken(`.bs-rij[data-key="${CSS.escape(k)}"]`, htmlBesprekenRij(U().regels.find(y => y.r.key === k)));
   } else if (rij.dataset.gk) {
     const gk = rij.dataset.gk, b = {...(C.besluiten.voorstellen[gk] || {})};
-    b.b = b.b === knop.dataset.b ? null : knop.dataset.b;
+    b.b = nieuwBesluit(b.b, knop.dataset.b);
     b.categorie = $('.vb-cat', rij).value; b.positie = $('.vb-pos', rij).value; b.notitie = $('.notitie', rij).value;
     await bewaarBesluit('voorstel', gk, !b.b && !b.notitie ? null : b);
     herteken(`.bs-rij[data-gk="${CSS.escape(gk)}"]`, htmlVoorstelRij(U().voorstellen.find(y => y.gk === gk)));
@@ -1227,6 +1259,7 @@ document.addEventListener('change', async e => {
 function exporteerBackup() {
   download(`Levertekorten_backup_${stempel()}.json`, JSON.stringify({app: APP, soort: 'coordinatie-backup', datum: new Date().toISOString(), bronbestand: BRON.bestand, bronVingerafdruk: BRON.vingerafdruk,
     panel: C.allen, beoordelingen: C.werkPer, besluiten: C.besluiten, coordinatie: C.coordinatie}, null, 2), 'application/json');
+  toast('Back-up gedownload. Dit is een extra kopie voor de zekerheid; alles staat ook in de database. Bewaar hem na elk paneloverleg en vóór elke publicatie.', 'ok');
 }
 
 /* Testhaak (alleen voor de geautomatiseerde tests) */

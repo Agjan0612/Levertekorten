@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 8 oktober 2026, ochtend. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 8 oktober 2026, middag. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -21,9 +21,10 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 7 | UI-analyse met screenshots (Playwright); drie ontwerpopties voor het beoordelaarsscherm gemaakt; opdrachtgever koos **optie B: stap voor stap** | Gedaan (7 okt) |
 | 8 | Optie B gebouwd en live gezet via [PR #1](https://github.com/Agjan0612/Levertekorten/pull/1) (samengevoegd in `main`, gepubliceerd) | Gedaan (7 okt) |
 | 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt); op 8 okt bijgewerkt voor het nieuwe inloggen en in de repository gezet (`handleidingen/`, zonder panelnamen) |
-| 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Mailservice **opgelost** (7 okt, Brevo, zie §5); inlogcode nog open (zie §7) |
+| 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Beide **opgelost** (7–8 okt, zie §5 en §7A) |
 | 11 | Inlogcode + "klik eerst"-knop gebouwd en live gezet via [PR #3](https://github.com/Agjan0612/Levertekorten/pull/3); Nederlandse mailsjablonen in Supabase ingesteld; met de echte inlogmail getest (code én knop) | Gedaan (7–8 okt) |
-| 12 | De eerste echte inlogtest met het panel | **Open** |
+| 12 | Coördinatorscherm gebruiksvriendelijker (punten 7–11 uit de UI-analyse van 7 okt): zichtbare knop *Besluit wissen*, categorieën in gewone taal (ook bij Voorstellen), paneltegels markeren wie het verst achterloopt met een knop *Herinnering mailen* (mailto, verstuurt niets zelf), uitleg bij *Back-up* (tooltip, melding, blok in Export), grijze tekst donkerder | Gebouwd 8 okt (branch `claude/gracious-ritchie-50oji0`), nog niet samengevoegd |
+| 13 | De eerste echte inlogtest met het panel | **Open** |
 
 ## 3. Genomen besluiten
 
@@ -92,7 +93,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 
 - `node --test tests/kern.test.js`: 7 tests, onder meer alle 64 combinaties van drie oordelen en het formaat van het laadbestand.
 - `tests/rls/draai.sh`: 23 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
-- `node tests/e2e/gedeeld.js`: 54 controles (12 nieuw voor inlogcode en inlogknop, 7 okt) (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
+- `node tests/e2e/gedeeld.js`: 59 controles (12 voor inlogcode en inlogknop, 7 okt; 5 voor het coördinatorscherm, 8 okt) (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
 - Inlogmail via Brevo getest op 7 okt op twee zakelijke adressen van de opdrachtgever (o.a. het ncontrol-adres op de panellijst): mail aangekomen (bij ncontrol na ~2 minuten), link werkte, inloggen gelukt. Geen voorafgaande klik door een mailscanner gezien. De opdrachtgever heeft daarna geoefend met beoordelen (48 oordelen, goed opgeslagen); die oefenoordelen zijn gewist, alle tabellen zijn weer leeg. Nog niet getest bij de andere twee panelleden. De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
 
 ## 7. Openstaande punten
@@ -124,7 +125,7 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 
 **D. Overige ideeën**
 - Nederlandse inlogmail (komt mee met punt A2).
-- Coördinatorscherm: zichtbare knop "besluit wissen" (nu: nogmaals klikken), categorie-keuzelijst bij Voorstellen breder, kleine grijze tekst iets donkerder.
+- ~~Coördinatorscherm: besluit wissen, categorie-keuzelijst, paneltegels, uitleg back-up, grijze tekst~~ **Gedaan (8 okt).** De screenshots in de coördinatorhandleiding (afbeelding 2, 4, 5 en 7) tonen nog de oude versie; de tekst is wel bijgewerkt.
 - **Gegevens:** twee gepubliceerde alternatieven bij PRK 133612 (PRK 49026 en 49034, prednisolon drank) staan niet meer in de Z-index. Het panel zal die waarschijnlijk afwijzen.
 - **GitHub Actions:** waarschuwing dat Node 20 verouderd is. Later de actions bijwerken.
 
@@ -132,4 +133,10 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 
 Start een sessie met de repository **Levertekorten**, met de Supabase-connector aan, en begin bijvoorbeeld met:
 
-> Lees VOORTGANG.md en CLAUDE.md. We gaan verder bij de openstaande punten, te beginnen met §7A (eigen mailservice en inlogcode). [Vermeld wat je al hebt gedaan, bijvoorbeeld: "Ik heb een account bij Resend aangemaakt."]
+> Lees eerst VOORTGANG.md en CLAUDE.md helemaal, en vat in een paar zinnen samen waar we staan.
+>
+> Stand van mijn kant: [bijvoorbeeld: ik heb de panelleden de link en de handleiding gestuurd op …].
+>
+> Wat ik vandaag wil: [bijvoorbeeld: kijk in de logboeken of de panelleden al hebben ingelogd / het pauzeren van Supabase voorkomen (§7C) / de eerste echte ronde doorlopen (§7B)].
+>
+> Werk op een eigen branch. Maak een pull request en voeg samen alleen als ik dat vraag. Werk na afloop VOORTGANG.md bij.

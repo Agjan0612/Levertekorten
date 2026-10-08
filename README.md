@@ -51,8 +51,8 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
 ## Voor de coördinator
 
 - Klik rechtsboven op **Coördineren**. Ben je ook beoordelaar, dan wissel je met **Beoordelen** / **Coördineren**. Rond je eigen beoordeling bij voorkeur eerst af, want als coördinator zie je de oordelen van iedereen.
-- **Overzicht:** tellingen per uitkomst.
-- **Bespreken:** de regels waar geen eindoordeel uit kwam, met alle oordelen en toelichtingen naast elkaar. Leg hier het eindbesluit vast (Akkoord of Afgewezen, met een notitie).
+- **Overzicht:** de voortgang per apotheker en tellingen per uitkomst. Wie het verst achterloopt, krijgt een rode rand. Met **✉ Herinnering mailen** opent een kant-en-klare mail in je eigen mailprogramma; die verstuur je zelf.
+- **Bespreken:** de regels waar geen eindoordeel uit kwam, met alle oordelen en toelichtingen naast elkaar. Leg hier het eindbesluit vast (Akkoord of Afgewezen, met een notitie). Terugdraaien kan met **Besluit wissen**.
 - **Voorstellen:** de eigen voorstellen van de apothekers. Hebben minimaal twee apothekers hetzelfde PRK voorgesteld, dan heet dat *gezamenlijk voorstel*. Een voorstel gaat alleen in het laadbestand als je het aanneemt, met categorie en positie.
 - **Export → Laadbestand maken…:** het OA-laadbestand `alternatieve-prk-regels-<jjjjmmdd>.csv`.
   - Precies de kolommen `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie`.
@@ -61,7 +61,7 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
   - Gesorteerd per tekort, daarbinnen in cascadevolgorde.
   - Laad je eerst de laatst gepubliceerde lijst in, dan bevat het bestand die lijst plus de nieuwe regels, zonder dubbelingen. Je ziet eerst een samenvatting.
 - **Logboek exporteren:** Excel met alle oordelen, uitkomsten en besluiten.
-- **Back-up:** download van alle oordelen en besluiten (JSON).
+- **Back-up:** download van alle oordelen en besluiten (JSON). Niet verplicht (alles staat al in de database), maar wel een goede extra kopie: maak er een na elk paneloverleg en vóór elke publicatie.
 
 ## Een nieuwe lijst of Z-index
 
