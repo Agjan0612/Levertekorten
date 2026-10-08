@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 7 oktober 2026, avond. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 8 oktober 2026, ochtend. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -22,7 +22,7 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 8 | Optie B gebouwd en live gezet via [PR #1](https://github.com/Agjan0612/Levertekorten/pull/1) (samengevoegd in `main`, gepubliceerd) | Gedaan (7 okt) |
 | 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt), bewust **niet** in de repository (zie §3) |
 | 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Mailservice **opgelost** (7 okt, Brevo, zie §5); inlogcode nog open (zie §7) |
-| 11 | Inlogcode + "klik eerst"-knop gebouwd (branch `claude/kind-einstein-4j3dcc`), getest met de nagebootste Supabase | Gebouwd (7 okt), **nog samenvoegen en mailsjablonen instellen** (zie §7 A2) |
+| 11 | Inlogcode + "klik eerst"-knop gebouwd en live gezet via [PR #3](https://github.com/Agjan0612/Levertekorten/pull/3); Nederlandse mailsjablonen in Supabase ingesteld; met de echte inlogmail getest (code én knop) | Gedaan (7–8 okt) |
 | 12 | De eerste echte inlogtest met het panel | **Open** |
 
 ## 3. Genomen besluiten
@@ -97,11 +97,11 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 
 ## 7. Openstaande punten
 
-**A. Eerst oplossen, vóór de beoordelaars de link krijgen (blokkades)**
+**A. Eerst oplossen, vóór de beoordelaars de link krijgen (blokkades) — beide opgelost, het panel kan de link krijgen**
 1. ~~**Eigen mailservice (SMTP) koppelen.**~~ **Gedaan (7 okt)** via Brevo, zie §5. Aandachtspunten:
    - De Brevo-SMTP-sleutel vervalt na **1 jaar (7 okt 2027)** en ook na **90 dagen zonder gebruik** (kan gebeuren tussen rondes). Dan komen er geen inlogmails meer. Oplossing: in Brevo (⚙️ → SMTP & API → SMTP) een nieuwe sleutel maken en die in Supabase → Authentication → Emails → SMTP Settings als *Password* plakken. Bestaande sleutels en de API-sleutel van de MBO-app niet aanraken; in Brevo **niet** "Activate for SMTP keys" (IP-blokkade) aanzetten, want Supabase mailt vanaf wisselende adressen.
    - Later eventueel een netter afzenderdomein (bijv. van Mosadex): alleen de SMTP-instellingen in Supabase wijzigen, de app zelf niet.
-2. **Inloggen met een code: gebouwd (7 okt), nog live zetten.** Zakelijke mailscanners openen links vooraf; een inloglink werkt maar één keer. Belangrijk inzicht: link en code zijn bij Supabase **hetzelfde eenmalige inlogbewijs**, dus een vooraf geopende `{{ .ConfirmationURL }}` maakt ook de code ongeldig. Daarom:
+2. ~~**Inloggen met een code.**~~ **Gedaan (live 7 okt, getest 8 okt):** beide sjablonen ingesteld; inloggen met de code en via de knop geslaagd op het ncontrol-adres (één `/verify` per keer, geen vooraf geopende link). Zakelijke mailscanners openen links vooraf; een inloglink werkt maar één keer. Belangrijk inzicht: link en code zijn bij Supabase **hetzelfde eenmalige inlogbewijs**, dus een vooraf geopende `{{ .ConfirmationURL }}` maakt ook de code ongeldig. Daarom:
    - de knop in de mail gaat naar de app met `?inlog={{ .TokenHash }}`; de app logt pas in na een klik op *Inloggen* (`verifyOtp({token_hash, type: 'email'})`), een scanner klikt niet;
    - daaronder de code `{{ .Token }}` (`verifyOtp({email, token, type: 'email'})`), in te vullen in de app; het adres wordt 1 uur onthouden (localStorage `lt:inlog`), en "Ik heb al een inlogcode" werkt ook in een andere browser;
    - mailsjabloon: `supabase/inlogmail.html`, onderwerp *Inloggen: beoordeling alternatieven*, in **beide** sjablonen *Confirm signup* (nieuwe gebruikers, zoals de andere panelleden) en *Magic Link* (bestaande gebruikers).
