@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 8 oktober 2026, middag. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 9 oktober 2026. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -20,12 +20,13 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 6 | GitHub Pages aangezet, Supabase URL-instelling gedaan, panel (3 apothekers) in de database gezet; eerste publicatie geslaagd | Gedaan (7 okt) |
 | 7 | UI-analyse met screenshots (Playwright); drie ontwerpopties voor het beoordelaarsscherm gemaakt; opdrachtgever koos **optie B: stap voor stap** | Gedaan (7 okt) |
 | 8 | Optie B gebouwd en live gezet via [PR #1](https://github.com/Agjan0612/Levertekorten/pull/1) (samengevoegd in `main`, gepubliceerd) | Gedaan (7 okt) |
-| 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt); op 8 okt bijgewerkt voor het nieuwe inloggen en in de repository gezet (`handleidingen/`, zonder panelnamen) |
+| 9 | Handleidingen (beoordelaars en coördinator) in Word en HTML, met screenshots, aan de opdrachtgever geleverd | Gedaan (7 okt); op 8 okt bijgewerkt voor het nieuwe inloggen en in de repository gezet (`handleidingen/`); 8 okt middag nieuwe schermafbeeldingen met verzonnen namen ([PR #5](https://github.com/Agjan0612/Levertekorten/pull/5)) |
 | 10 | Risicoanalyse: twee blokkades voor het inloggen gevonden (eigen mailservice nodig, inlogcode i.p.v. alleen link) | Beide **opgelost** (7–8 okt, zie §5 en §7A) |
 | 11 | Inlogcode + "klik eerst"-knop gebouwd en live gezet via [PR #3](https://github.com/Agjan0612/Levertekorten/pull/3); Nederlandse mailsjablonen in Supabase ingesteld; met de echte inlogmail getest (code én knop) | Gedaan (7–8 okt) |
-| 12 | Coördinatorscherm gebruiksvriendelijker (punten 7–11 uit de UI-analyse van 7 okt): zichtbare knop *Besluit wissen*, categorieën in gewone taal (ook bij Voorstellen), paneltegels markeren wie het verst achterloopt met een knop *Herinnering mailen* (mailto, verstuurt niets zelf), uitleg bij *Back-up* (tooltip, melding, blok in Export), grijze tekst donkerder | Gebouwd 8 okt (branch `claude/gracious-ritchie-50oji0`), nog niet samengevoegd |
-| 13 | Database wakker houden: functie `wakker()` (alleen `true`, voor anon) en workflow *Database wakker houden* die hem elke drie dagen aanroept | Gebouwd 8 okt; functie staat in de echte database |
-| 14 | De eerste echte inlogtest met het panel | **Open** |
+| 12 | Coördinatorscherm gebruiksvriendelijker (punten 7–11 uit de UI-analyse van 7 okt): zichtbare knop *Besluit wissen*, categorieën in gewone taal (ook bij Voorstellen), paneltegels markeren wie het verst achterloopt met een knop *Herinnering mailen* (mailto, verstuurt niets zelf), uitleg bij *Back-up* (tooltip, melding, blok in Export), grijze tekst donkerder | Live 8 okt via [PR #5](https://github.com/Agjan0612/Levertekorten/pull/5) |
+| 13 | Database wakker houden: functie `wakker()` (alleen `true`, voor anon) en workflow *Database wakker houden* die hem elke drie dagen aanroept | Live 8 okt via [PR #6](https://github.com/Agjan0612/Levertekorten/pull/6); functie staat in de echte database; eerste (handmatige) run groen, aanroep zichtbaar in de logboeken van Supabase |
+| 14 | Uitnodiging aan de twee andere panelleden (link, inlogstappen, link naar de online handleiding) als concept in de Gmail van de opdrachtgever gezet | Gedaan 8 okt; **nog niet verstuurd** (de opdrachtgever vult eerst twee datums in) |
+| 15 | De eerste echte inlogtest met het panel | **Open** |
 
 ## 3. Genomen besluiten
 
@@ -71,6 +72,8 @@ js/config.js                – Supabase-URL en publishable sleutel
 supabase/schema.sql         – tabellen + toegangsregels (RLS)
 invoer/*.xlsx → tools/bouw-data.js → data/bron.json, data/zindex.json
 .github/workflows/publiceren.yml – omzetten, testen (ook RLS), publiceren naar Pages
+.github/workflows/wakker-houden.yml – elke drie dagen rpc/wakker aanroepen (Supabase niet laten pauzeren)
+handleidingen/              – handleidingen beoordelaars en coördinator (Word + HTML)
 tests/                      – kern.test.js, rls/ (PostgreSQL), e2e/ (Playwright + nagebootste Supabase)
 vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, geen CDN)
 ```
@@ -96,6 +99,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 - `tests/rls/draai.sh`: 25 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
 - `node tests/e2e/gedeeld.js`: 59 controles (12 voor inlogcode en inlogknop, 7 okt; 5 voor het coördinatorscherm, 8 okt) (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
 - Inlogmail via Brevo getest op 7 okt op twee zakelijke adressen van de opdrachtgever (o.a. het ncontrol-adres op de panellijst): mail aangekomen (bij ncontrol na ~2 minuten), link werkte, inloggen gelukt. Geen voorafgaande klik door een mailscanner gezien. De opdrachtgever heeft daarna geoefend met beoordelen (48 oordelen, goed opgeslagen); die oefenoordelen zijn gewist, alle tabellen zijn weer leeg. Nog niet getest bij de andere twee panelleden. De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. Ook nog niet getest: de echte gepubliceerde lijst `alternatieve-prk-regels-20260916.csv` (het formaat is getest met een nagemaakte versie).
+- Workflow *Database wakker houden* op 8 okt handmatig gestart: groen, en in de logboeken van Supabase (`edge_logs`) staat `POST | 200 | …/rest/v1/rpc/wakker`.
 
 ## 7. Openstaande punten
 
@@ -110,7 +114,8 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
    - **Volgorde:** eerst de PR samenvoegen en de publicatie afwachten, dan pas de sjablonen in Supabase aanpassen (de oude app kent `?inlog=` en het codeveld niet). Oude mails met de gewone link blijven werken.
 Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen van de opdrachtgever; de link werd niet vooraf "opgebruikt". Punt 2 is daardoor minder dringend, maar blijft een vangnet voor de adressen van de andere panelleden. De melding dat de mail een paar minuten kan duren staat inmiddels in de app.
 
-**B. Daarna samen**
+**B. Nu aan de beurt**
+0. **Uitnodiging versturen** (opdrachtgever): het concept staat in zijn Gmail (aan de twee andere panelleden). Eerst de twee datums invullen (uiterste datum beoordelen, datum paneloverleg). De Word-handleiding is niet bijgevoegd (de online link staat in de mail); eventueel zelf toevoegen. Daarna: in de logboeken (`auth_logs`) kijken of het inloggen lukt, ook bij de mailscanners van Mosadex en de Service Apotheek.
 3. De eerste echte test: inloggen (met code), oordelen geven, tweede apotheker, Coördineren, laadbestand. Daarna de proefoordelen wissen (via `execute_sql`) zodat het panel leeg begint.
 4. Testen met de echte gepubliceerde lijst van 16-09, zodra de opdrachtgever die aanlevert.
 5. **Vraag aan de opdrachtgever:** voegt OA een laadbestand *toe* aan de bestaande tabel, of *vervangt* het die? Bij vervangen zijn alle bestaande adviezen weg als de gepubliceerde lijst niet is geladen (de app waarschuwt wel).
@@ -125,7 +130,6 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 - Kleiner: na een update tot ~10 min de oude versie (Ctrl+F5); een andere opbouw van de Excel laat het publiceren mislukken (oude lijst blijft online, GitHub mailt); voor de AVG biedt Supabase standaard een verwerkersovereenkomst (data in Frankfurt).
 
 **D. Overige ideeën**
-- Nederlandse inlogmail (komt mee met punt A2).
 - ~~Coördinatorscherm: besluit wissen, categorie-keuzelijst, paneltegels, uitleg back-up, grijze tekst~~ **Gedaan (8 okt).** Handleidingen bijgewerkt (tekst en schermafbeeldingen).
 - **Gegevens:** twee gepubliceerde alternatieven bij PRK 133612 (PRK 49026 en 49034, prednisolon drank) staan niet meer in de Z-index. Het panel zal die waarschijnlijk afwijzen.
 - **GitHub Actions:** waarschuwing dat Node 20 verouderd is. Later de actions bijwerken.
@@ -136,7 +140,7 @@ Start een sessie met de repository **Levertekorten**, met de Supabase-connector 
 
 > Lees eerst VOORTGANG.md en CLAUDE.md helemaal, en vat in een paar zinnen samen waar we staan.
 >
-> Stand van mijn kant: [bijvoorbeeld: ik heb de panelleden de link en de handleiding gestuurd op …].
+> Stand van mijn kant: [bijvoorbeeld: ik heb de uitnodiging (concept in Gmail) verstuurd op …, met als uiterste datum …].
 >
 > Wat ik vandaag wil: [bijvoorbeeld: kijk in de logboeken of de panelleden al hebben ingelogd / de eerste echte ronde doorlopen (§7B)].
 >
