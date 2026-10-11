@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 9 oktober 2026. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 11 oktober 2026. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -27,6 +27,7 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 | 13 | Database wakker houden: functie `wakker()` (alleen `true`, voor anon) en workflow *Database wakker houden* die hem elke drie dagen aanroept | Live 8 okt via [PR #6](https://github.com/Agjan0612/Levertekorten/pull/6); functie staat in de echte database; eerste (handmatige) run groen, aanroep zichtbaar in de logboeken van Supabase |
 | 14 | Uitnodiging aan de twee andere panelleden (link, inlogstappen, link naar de online handleiding) als concept in de Gmail van de opdrachtgever gezet | Gedaan 8 okt; **nog niet verstuurd** (de opdrachtgever vult eerst twee datums in) |
 | 15 | De eerste echte inlogtest met het panel | **Open** |
+| 16 | Laadbestand aangepast: OA **voegt toe** aan de bestaande tabel (antwoord opdrachtgever 11 okt). Het laadbestand bevat nu alleen de nieuwe regels; daarnaast een *volledige lijst* voor de volgende ronde en een lijstje *te verwijderen regels* voor afgewezen gepubliceerde adviezen. Handleiding coördinator (hoofdstuk 7, afbeeldingen 7–9) bijgewerkt | Gebouwd 11 okt op de branch; nog samenvoegen na akkoord |
 
 ## 3. Genomen besluiten
 
@@ -49,9 +50,10 @@ Wens van de opdrachtgever: iedere apotheker drukt op een link en beoordeelt zelf
 **Laadbestand**
 - **Stofnamen** neemt de app letterlijk over uit de Excel, ook als ze afwijken van de Generiek-kolom in de Z-index (22 regels van "Al gepubliceerd (16-09)"). De opdrachtgever koos ervoor dat zo te laten.
 - **Laadbestand:** precies `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie`, UTF-8 zonder BOM, CRLF, alleen eindstatus Akkoord.
+  - **OA voegt het laadbestand toe aan de bestaande tabel** (bevestigd door de opdrachtgever, 11 okt). Het laadbestand bevat daarom alleen de **nieuwe** regels: wat al in de gepubliceerde lijst staat (combinatie AdviesPrk + AlternatiefPrk), gaat er niet nog eens in. De gepubliceerde lijst moet dus geladen zijn; zonder die lijst waarschuwt de app voor dubbele regels in OA.
   - Gesorteerd per AdviesPrk, daarbinnen in cascadevolgorde.
-  - Met een gepubliceerde lijst erbij: per tekort eerst de bestaande regels, daarna de nieuwe, zonder dubbelingen.
-  - Gepubliceerde adviezen die het panel nu afwijst, blijven standaard staan. Een vinkje haalt ze eruit.
+  - **Volledige lijst** (`alternatieve-prk-regels-volledig-<datum>.csv`): gepubliceerd + nieuw, per tekort eerst de bestaande regels. Niet voor OA; dit is de gepubliceerde lijst voor de volgende ronde.
+  - Gepubliceerde adviezen die het panel nu afwijst, kan een laadbestand niet weghalen. De app toont ze apart met een download *te verwijderen regels* (zelfde formaat) om OA te vragen ze te verwijderen. Het vinkje haalt ze ook uit de volledige lijst; het laadbestand verandert er niet door.
 
 **Gegevens**
 - De lijst met tekorten en de Z-index mogen openbaar staan (toestemming van de opdrachtgever). De oordelen, namen en e-mailadressen niet.
@@ -97,7 +99,7 @@ vendor/                     – SheetJS 0.18.5, supabase-js 2.117.2 (lokaal, gee
 
 - `node --test tests/kern.test.js`: 7 tests, onder meer alle 64 combinaties van drie oordelen en het formaat van het laadbestand.
 - `tests/rls/draai.sh`: 25 controles van de toegangsregels in PostgreSQL. Draait ook op GitHub bij elke wijziging.
-- `node tests/e2e/gedeeld.js`: 59 controles (12 voor inlogcode en inlogknop, 7 okt; 5 voor het coördinatorscherm, 8 okt) (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
+- `node tests/e2e/gedeeld.js`: 65 controles (6 voor laadbestand/volledige lijst/te verwijderen regels met een gepubliceerde lijst, 11 okt), eerder 59 (12 voor inlogcode en inlogknop, 7 okt; 5 voor het coördinatorscherm, 8 okt) (ook op GitHub groen bij de publicatie van PR #1) van de hele werkwijze in de browser met drie apothekers. Onder meer: live bijwerken, eindbesluit, laadbestand, werken zonder verbinding, herladen en uitloggen, en de stapweergave (Volgende/Overslaan/Vorige, uitleg, toelichting, menu Meer).
 - Inlogmail via Brevo getest op 7 okt op twee zakelijke adressen van de opdrachtgever (o.a. het ncontrol-adres op de panellijst): mail aangekomen (bij ncontrol na ~2 minuten), link werkte, inloggen gelukt. Geen voorafgaande klik door een mailscanner gezien. De opdrachtgever heeft daarna geoefend met beoordelen (48 oordelen, goed opgeslagen); die oefenoordelen zijn gewist, alle tabellen zijn weer leeg. Nog niet getest bij de andere twee panelleden. De site zelf staat live; vanuit Claude's omgeving is `github.io` niet bereikbaar, dus controleren gaat via de status van de workflow. **Echte gepubliceerde lijst getest (9 okt):** `alternatieve-prk-regels-20260916.csv` (601 regels) geladen in een proefronde in de browser (nagebootste Supabase, verzonnen oordelen van drie apothekers op de echte lijst van 299 regels). Het laadbestand had dezelfde kopregel, geen BOM en CRLF; alle 601 bestaande regels stonden er letterlijk in (ook dubbele spaties), de nieuwe akkoord-regels kwamen erachter per tekort, en dubbelingen werden overgeslagen. De lijst zelf staat niet in de repository.
 - Workflow *Database wakker houden* op 8 okt handmatig gestart: groen, en in de logboeken van Supabase (`edge_logs`) staat `POST | 200 | …/rest/v1/rpc/wakker`.
 
@@ -118,7 +120,7 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 0. **Uitnodiging versturen** (opdrachtgever): het concept staat in zijn Gmail (aan de twee andere panelleden). Eerst de twee datums invullen (uiterste datum beoordelen, datum paneloverleg). De Word-handleiding is niet bijgevoegd (de online link staat in de mail); eventueel zelf toevoegen. Daarna: in de logboeken (`auth_logs`) kijken of het inloggen lukt, ook bij de mailscanners van Mosadex en de Service Apotheek.
 3. De eerste echte test: inloggen (met code), oordelen geven, tweede apotheker, Coördineren, laadbestand. Daarna de proefoordelen wissen (via `execute_sql`) zodat het panel leeg begint.
 4. ~~Testen met de echte gepubliceerde lijst van 16-09.~~ **Gedaan (9 okt)**, zie §6. De opdrachtgever kreeg een voorbeeld van het Logboek (Excel) en het laadbestand (CSV). Laad deze lijst bij de echte ronde in het coördinatorscherm (*Gepubliceerde lijst*); 44 regels uit de huidige tekortenlijst staan er al in (niveau "Al gepubliceerd (16-09)").
-5. **Vraag aan de opdrachtgever:** voegt OA een laadbestand *toe* aan de bestaande tabel, of *vervangt* het die? Bij vervangen zijn alle bestaande adviezen weg als de gepubliceerde lijst niet is geladen (de app waarschuwt wel).
+5. ~~Voegt OA toe of vervangt het?~~ **Beantwoord (11 okt): OA voegt toe.** De app is daarop aangepast (zie §2, stap 16, en §3 *Laadbestand*). Nog open: weet OA wat te doen met de lijst *te verwijderen regels*, en ontdubbelt OA zelf als een regel toch dubbel wordt aangeleverd?
 
 **C. Bekende beperkingen (gevonden 7 okt), later oplossen**
 - ~~**Pauzeren**~~ **Opgelost (8 okt):** de workflow `.github/workflows/wakker-houden.yml` roept elke drie dagen (05:23 UTC op dag 1, 4, 7, … van de maand) `rpc/wakker` aan met de publieke sleutel uit `js/config.js`. Mislukt dat, dan wordt de workflow rood en mailt GitHub. Pauzeert het project toch: herstellen via het dashboard of `restore_project`. **Let op:** GitHub zet geplande workflows in een openbare repository uit na 60 dagen zonder wijzigingen in de repository (mailt vooraf); weer aanzetten via Actions → *Database wakker houden* → *Enable workflow*.

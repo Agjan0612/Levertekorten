@@ -54,12 +54,14 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
 - **Overzicht:** de voortgang per apotheker en tellingen per uitkomst. Wie het verst achterloopt, krijgt een rode rand. Met **✉ Herinnering mailen** opent een kant-en-klare mail in je eigen mailprogramma; die verstuur je zelf.
 - **Bespreken:** de regels waar geen eindoordeel uit kwam, met alle oordelen en toelichtingen naast elkaar. Leg hier het eindbesluit vast (Akkoord of Afgewezen, met een notitie). Terugdraaien kan met **Besluit wissen**.
 - **Voorstellen:** de eigen voorstellen van de apothekers. Hebben minimaal twee apothekers hetzelfde PRK voorgesteld, dan heet dat *gezamenlijk voorstel*. Een voorstel gaat alleen in het laadbestand als je het aanneemt, met categorie en positie.
-- **Export → Laadbestand maken…:** het OA-laadbestand `alternatieve-prk-regels-<jjjjmmdd>.csv`.
+- **Gepubliceerde lijst** (tegel bovenaan): laad hier eerst de laatst gepubliceerde lijst, de huidige tabel in OA (bijvoorbeeld `alternatieve-prk-regels-20260916.csv`). OA **voegt** een laadbestand **toe** aan die tabel; zonder deze lijst kan de app niet zien welke regels OA al heeft.
+- **Export → Laadbestand maken…:** het OA-laadbestand `alternatieve-prk-regels-<jjjjmmdd>.csv`. Dit stuur je naar OA.
   - Precies de kolommen `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie`.
   - Puntkomma als scheidingsteken, UTF-8 zonder BOM, regeleinde CRLF.
-  - Alleen regels met eindstatus Akkoord.
-  - Gesorteerd per tekort, daarbinnen in cascadevolgorde.
-  - Laad je eerst de laatst gepubliceerde lijst in, dan bevat het bestand die lijst plus de nieuwe regels, zonder dubbelingen. Je ziet eerst een samenvatting.
+  - Alleen **nieuwe** regels: eindstatus Akkoord en nog niet in de gepubliceerde lijst.
+  - Gesorteerd per tekort, daarbinnen in cascadevolgorde. Je ziet eerst een samenvatting.
+- **Export → Volledige lijst maken…:** de gepubliceerde lijst plus de nieuwe regels (`alternatieve-prk-regels-volledig-<jjjjmmdd>.csv`), zoals de tabel in OA er daarna uitziet. Niet naar OA sturen: bewaar hem en laad hem in de volgende ronde als gepubliceerde lijst.
+- **Afgewezen gepubliceerde regels:** een laadbestand kan niets uit OA weghalen. De app toont ze apart; met *Lijst te verwijderen regels downloaden* vraag je OA ze te verwijderen (en met het vinkje gaan ze ook uit de volledige lijst).
 - **Logboek exporteren:** Excel met alle oordelen, uitkomsten en besluiten.
 - **Back-up:** download van alle oordelen en besluiten (JSON). Niet verplicht (alles staat al in de database), maar wel een goede extra kopie: maak er een na elk paneloverleg en vóór elke publicatie.
 

@@ -178,6 +178,44 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   const paren = new Set(regels.map(f => f[0] + '|' + f[2]));
   const verwacht = [k[0], k[1], k[2], k[3], k[4], k[6], `${tk}|${v[0].prk}`];
   ok(verwacht.every(x => paren.has(x)) && !paren.has(k[5]) && regels.length === verwacht.length, `CSV bevat precies de ${verwacht.length} akkoord-regels (incl. besluit en voorstel)`);
+  ok((await arnout.textContent('#cinhoud')).includes('Laad eerst de gepubliceerde lijst') && !(await arnout.$('#btnVolledig')), 'zonder gepubliceerde lijst: waarschuwing voor dubbele regels, geen volledige lijst');
+
+  // gepubliceerde lijst laden: OA voegt toe, dus het laadbestand bevat alleen de nieuwe regels
+  const pubPad = path.join(require('os').tmpdir(), 'alternatieve-prk-regels-test.csv');
+  const pubRegel = key => `${key.split('|')[0]};OUD TEKORT;${key.split('|')[1]};OUD ALTERNATIEF;AndereDosering`;
+  fs.writeFileSync(pubPad, ['AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie', pubRegel(k[0]), pubRegel(k[5]), '1;A;2;B;AndereStof', ''].join('\r\n'));
+  const [kies] = await Promise.all([arnout.waitForEvent('filechooser'), arnout.click('#btnLaadPub')]);
+  await kies.setFiles(pubPad);
+  await arnout.waitForFunction(() => (window.LT.C.coordinatie.gepubliceerd || {}).rijen);
+  await arnout.click('#ctabs button[data-tab=export]'); await arnout.waitForSelector('#btnVolledig');
+  const leesCsv = async knop => {
+    await arnout.click(knop); await arnout.waitForSelector('#modal .venster');
+    const [dl] = await Promise.all([arnout.waitForEvent('download'), arnout.click('#modal .acties button.primair')]);
+    const pad = path.join(require('os').tmpdir(), dl.suggestedFilename()); await dl.saveAs(pad);
+    return {naam: dl.suggestedFilename(), regels: fs.readFileSync(pad, 'utf8').split('\r\n').filter(Boolean).slice(1)};
+  };
+  const laad = await leesCsv('#btnCsv'), laadParen = laad.regels.map(l => l.split(';')).map(f => f[0] + '|' + f[2]);
+  ok(laad.naam.startsWith('alternatieve-prk-regels-2') && laad.regels.length === verwacht.length - 1 && !laadParen.includes(k[0]) && !laadParen.includes('1|2'),
+    'laadbestand met gepubliceerde lijst: alleen nieuwe regels (wat OA al heeft, gaat er niet nog eens in)');
+  const vol = await leesCsv('#btnVolledig');
+  ok(vol.naam.startsWith('alternatieve-prk-regels-volledig-') && vol.regels.length === 3 + verwacht.length - 1 && vol.regels.includes(pubRegel(k[0])) && vol.regels.includes(pubRegel(k[5])),
+    'volledige lijst: gepubliceerd + nieuw, bestaande regels letterlijk (ook de nu afgewezen regel, standaard)');
+  const [tv] = await Promise.all([arnout.waitForEvent('download'), arnout.click('#btnTeVerwijderen')]);
+  const tvPad = path.join(require('os').tmpdir(), tv.suggestedFilename()); await tv.saveAs(tvPad);
+  ok(tv.suggestedFilename().startsWith('te-verwijderen-prk-regels-') && fs.readFileSync(tvPad, 'utf8') === `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie\r\n${pubRegel(k[5])}\r\n`,
+    'afgewezen gepubliceerde regel: apart lijstje om OA te vragen hem te verwijderen');
+  await arnout.click('#chkVerwijder'); await arnout.waitForFunction(() => window.LT.C.coordinatie.verwijderAfgewezen);
+  const vol2 = await leesCsv('#btnVolledig'), laad2 = await leesCsv('#btnCsv');
+  ok(!vol2.regels.includes(pubRegel(k[5])) && vol2.regels.length === vol.regels.length - 1 && laad2.regels.length === laad.regels.length, 'vinkje: afgewezen regel uit de volledige lijst, laadbestand ongewijzigd');
+  await arnout.click('#chkVerwijder'); await arnout.waitForFunction(() => !window.LT.C.coordinatie.verwijderAfgewezen);
+  const [lg] = await Promise.all([arnout.waitForEvent('download'), arnout.click('#btnLog')]);
+  const XLSX = require(path.join(REPO, 'vendor/xlsx.full.min.js')), lgPad = path.join(require('os').tmpdir(), lg.suggestedFilename()); await lg.saveAs(lgPad);
+  const wb = XLSX.read(fs.readFileSync(lgPad)), logRegels = XLSX.utils.sheet_to_json(wb.Sheets.Consensus);
+  const inLaad = key => (logRegels.find(r => r.PRK + '|' + r['PRK alternatief'] === key) || {})['In laadbestand'];
+  ok(wb.SheetNames.includes('Volledige lijst') && XLSX.utils.sheet_to_json(wb.Sheets.Laadbestand).length === laad.regels.length && inLaad(k[0]) === 'al gepubliceerd' && inLaad(k[1]) === 'ja' && inLaad(k[5]) === 'al gepubliceerd',
+    'logboek: tabbladen Laadbestand (alleen nieuw) en Volledige lijst; "In laadbestand" zegt ja of al gepubliceerd');
+  await arnout.click('#btnPubWeg'); await arnout.click('#modal .acties button.gevaar, #modal .acties button.primair');
+  await arnout.waitForFunction(() => !window.LT.C.coordinatie.gepubliceerd);
 
   // Femke kan geen besluiten zien of maken
   const femkeBesluiten = await femke.evaluate(async () => (await Opslag.besluiten(LT.BRON.vingerafdruk)));

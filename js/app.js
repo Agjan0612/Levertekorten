@@ -526,7 +526,9 @@ function maakLaadbestand(u) {
   const {regels: nieuw, dubbel: dubbelIntern} = bouwNieuweRegels(BRON, u);
   const pub = C.coordinatie.gepubliceerd;
   const {rijen, st} = samenvoegen(pub ? pub.rijen : null, nieuw, afgewezenKeys(u), !!C.coordinatie.verwijderAfgewezen);
-  return {nieuw, dubbelIntern, rijen, st, pub};
+  // OA voegt het laadbestand toe aan de bestaande tabel: het laadbestand bevat dus alleen de nieuwe regels.
+  // De volledige lijst (gepubliceerd + nieuw) is voor de coördinator, om in de volgende ronde als gepubliceerde lijst te laden.
+  return {nieuw, dubbelIntern, rijen, laad: rijen.filter(r => r.herkomst === 'nieuw'), st, pub};
 }
 
 function renderCExport(u) {
@@ -537,57 +539,79 @@ function renderCExport(u) {
   const afgPub = L.st.afgewezenInBestaand;
   $('#cinhoud').innerHTML = `
     <div class="blok"><h2>OA-laadbestand (CSV)</h2>
-      <p>Alleen regels met eindstatus <b>Akkoord</b> (consensus of besluit na overleg) en aangenomen voorstellen. Formaat: <span class="mono">${OA_KOP.join(';')}</span>, puntkomma, UTF-8 zonder BOM, regeleinde CRLF. Sortering per tekort (PRK), daarbinnen de cascadevolgorde.</p>
+      <p>OA <b>voegt</b> het laadbestand <b>toe</b> aan de bestaande tabel. Het bestand bevat daarom alleen de <b>nieuwe</b> regels: regels met eindstatus <b>Akkoord</b> (consensus of besluit na overleg) en aangenomen voorstellen die nog niet in de gepubliceerde lijst staan. Formaat: <span class="mono">${OA_KOP.join(';')}</span>, puntkomma, UTF-8 zonder BOM, regeleinde CRLF. Sortering per tekort (PRK), daarbinnen de cascadevolgorde.</p>
       <table class="samenv">
-        <tr><td>Nieuwe akkoord-regels uit de lijst</td><td>${L.nieuw.filter(n => n.herkomst.startsWith('lijst')).length}</td></tr>
+        <tr><td>Akkoord-regels uit de lijst</td><td>${L.nieuw.filter(n => n.herkomst.startsWith('lijst')).length}</td></tr>
         <tr><td>Aangenomen voorstellen</td><td>${L.nieuw.filter(n => n.herkomst.startsWith('voorstel')).length}</td></tr>
         ${L.dubbelIntern ? `<tr><td>Overgeslagen (voorstel gelijk aan een regel uit de lijst)</td><td>${L.dubbelIntern}</td></tr>` : ''}
-        ${L.pub ? `<tr><td>Bestaande regels in ${esc(L.pub.bestand)}</td><td>${L.st.bestaand}</td></tr>` : ''}
+        ${L.pub ? `<tr><td>Overgeslagen: staan al in ${esc(L.pub.bestand)}</td><td>−${L.st.dubbel}</td></tr>` : ''}
+        <tr class="totaal"><td>Regels in het laadbestand</td><td>${L.laad.length}</td></tr>
       </table>
       ${open || onv || vOpen ? `<div class="melding waarsch">Nog niet afgerond: ${open} regel(s) Bespreken zonder besluit, ${onv} Onvolledig, ${vOpen} voorstel(len) zonder besluit. Deze komen <b>niet</b> in het laadbestand.</div>` : ''}
       ${vAk ? `<div class="melding fout">${vAk} aangenomen voorstel(len) hebben nog geen categorie en worden niet meegenomen.</div>` : ''}
-      ${!L.pub ? `<div class="melding">Er is geen gepubliceerde lijst geladen; het bestand bevat dan alleen de nieuwe regels. Laad bovenaan de meest recente lijst om die aan te vullen.</div>` : ''}
+      ${!L.pub ? `<div class="melding waarsch"><b>Laad eerst de gepubliceerde lijst</b> (bovenaan, de huidige tabel in OA). Zonder die lijst kan de app niet zien welke regels OA al heeft; die komen dan dubbel in OA.</div>` : ''}
       ${afgPub.length ? `<div class="melding waarsch"><b>${afgPub.length} regel(s) uit de gepubliceerde lijst zijn nu door het panel afgewezen:</b><ul>${afgPub.map(b => `<li class="mono">${esc(b.velden.join(';'))}</li>`).join('')}</ul>
-        <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="chkVerwijder" ${C.coordinatie.verwijderAfgewezen ? 'checked' : ''}> Verwijder deze regels uit het laadbestand</label></div>` : ''}
-      <button class="knop primair" id="btnCsv" ${L.rijen.length ? '' : 'disabled'}>Laadbestand maken…</button>
-      ${L.rijen.length ? '' : '<span style="color:var(--g2);margin-left:8px">Er zijn nog geen akkoord-regels.</span>'}
+        <p style="margin:6px 0">OA heeft deze regels al. Een laadbestand voegt alleen toe en haalt ze <b>niet</b> weg. Wil je ze uit OA hebben, vraag OA dan om ze te verwijderen; stuur daarvoor dit lijstje mee.</p>
+        <button class="knop klein" id="btnTeVerwijderen">Lijst te verwijderen regels downloaden</button>
+        <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="chkVerwijder" ${C.coordinatie.verwijderAfgewezen ? 'checked' : ''}> Ik laat ze door OA verwijderen: haal ze ook uit de volledige lijst</label></div>` : ''}
+      <button class="knop primair" id="btnCsv" ${L.laad.length ? '' : 'disabled'}>Laadbestand maken…</button>
+      ${L.laad.length ? '' : `<span style="color:var(--g2);margin-left:8px">${L.rijen.length ? 'Er zijn geen nieuwe akkoord-regels.' : 'Er zijn nog geen akkoord-regels.'}</span>`}
     </div>
-    <div class="blok"><h2>Logboek (Excel)</h2><p>Het volledige consensusoverzicht: per regel alle oordelen en toelichtingen, de consensus, het besluit na overleg en of de regel in het laadbestand staat. Plus de voorstellen.</p>
+    ${L.pub ? `<div class="blok"><h2>Volledige lijst (voor de volgende ronde)</h2><p>De gepubliceerde lijst plus de nieuwe regels: zo ziet de tabel in OA eruit nadat het laadbestand is toegevoegd${C.coordinatie.verwijderAfgewezen && L.st.verwijderd ? ' en de afgewezen regels zijn verwijderd' : ''}. <b>Niet naar OA sturen.</b> Bewaar dit bestand en laad het in de volgende ronde bovenaan als gepubliceerde lijst.</p>
+      <button class="knop" id="btnVolledig">Volledige lijst maken…</button></div>` : ''}
+    <div class="blok"><h2>Logboek (Excel)</h2><p>Het volledige consensusoverzicht: per regel alle oordelen en toelichtingen, de consensus, het besluit na overleg en of de regel in het laadbestand staat. Plus de voorstellen, het laadbestand en de volledige lijst.</p>
       <button class="knop" id="btnLog">Logboek exporteren</button></div>
     <div class="blok"><h2>Back-up (extra kopie)</h2><p>Alles staat al in de database; een back-up is <b>niet verplicht</b>. Het is een extra kopie van alle oordelen, voorstellen en besluiten, voor als er iets misgaat. Supabase maakt op het gratis plan zelf geen back-ups die je kunt downloaden. Advies: maak er een na elk paneloverleg en vóór elke publicatie.</p>
       <button class="knop" id="btnBackup2">Back-up downloaden</button></div>`;
   const chk = $('#chkVerwijder'); if (chk) chk.addEventListener('change', () => { C.coordinatie.verwijderAfgewezen = chk.checked; bewaarCoordinatie(); renderCExport(U()); });
-  $('#btnCsv').addEventListener('click', () => toonCsvSamenvatting());
+  if ($('#btnTeVerwijderen')) $('#btnTeVerwijderen').addEventListener('click', downloadTeVerwijderen);
+  if ($('#btnVolledig')) $('#btnVolledig').addEventListener('click', () => toonCsvSamenvatting('volledig'));
+  $('#btnCsv').addEventListener('click', () => toonCsvSamenvatting('laad'));
   $('#btnLog').addEventListener('click', exporteerLogboek);
   $('#btnBackup2').addEventListener('click', exporteerBackup);
 }
 
-async function toonCsvSamenvatting() {
-  const u = U(), L = maakLaadbestand(u);
+async function toonCsvSamenvatting(soort) {
+  const u = U(), L = maakLaadbestand(u), volledig = soort === 'volledig';
+  const rijen = volledig ? L.rijen : L.laad;
   let csv;
-  try { csv = naarOaCsv(L.rijen); } catch (e) { return meld('Laadbestand niet gemaakt', `<pre class="voorbeeld">${esc(e.message)}</pre>`); }
-  const naam = `alternatieve-prk-regels-${stempel()}.csv`;
+  try { csv = naarOaCsv(rijen); } catch (e) { return meld(volledig ? 'Volledige lijst niet gemaakt' : 'Laadbestand niet gemaakt', `<pre class="voorbeeld">${esc(e.message)}</pre>`); }
+  const naam = volledig ? `alternatieve-prk-regels-volledig-${stempel()}.csv` : `alternatieve-prk-regels-${stempel()}.csv`;
   const regels = csv.split('\r\n');
-  const html = `<p>Bestandsnaam: <b>${esc(naam)}</b></p>
-    <table class="samenv">
-      ${L.pub ? `<tr><td>Bestaande regels (${esc(L.pub.bestand)})</td><td>${L.st.bestaand}</td></tr>` : ''}
-      ${L.pub && L.st.bestaandDubbel ? `<tr><td>&nbsp;&nbsp;waarvan dubbel in de bestaande lijst (eenmaal behouden)</td><td>${L.st.bestaandDubbel}</td></tr>` : ''}
-      ${L.pub && L.st.verwijderd ? `<tr><td>&nbsp;&nbsp;waarvan verwijderd (nu afgewezen)</td><td>−${L.st.verwijderd}</td></tr>` : ''}
-      <tr><td>Nieuwe akkoord-regels</td><td>${L.st.nieuw}</td></tr>
-      <tr><td>&nbsp;&nbsp;waarvan overgeslagen dubbelingen (combinatie AdviesPrk + AlternatiefPrk staat er al)</td><td>${L.st.dubbel}</td></tr>
-      <tr><td>&nbsp;&nbsp;waarvan toegevoegd</td><td>${L.st.toegevoegd}</td></tr>
-      <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.st.totaal}</td></tr>
-    </table>
-    <p>Voorbeeld van de eerste regels:</p><pre class="voorbeeld">${esc(regels.slice(0, 12).join('\n'))}${L.rijen.length > 11 ? '\n…' : ''}</pre>`;
-  if (!await modal('Samenvatting laadbestand', html, [{tekst: 'Annuleren', waarde: false}, {tekst: 'Opslaan', waarde: true, primair: true}])) return;
+  const tabel = volledig ? `
+      <tr><td>Bestaande regels (${esc(L.pub.bestand)})</td><td>${L.st.bestaand}</td></tr>
+      ${L.st.bestaandDubbel ? `<tr><td>&nbsp;&nbsp;waarvan dubbel in de bestaande lijst (eenmaal behouden)</td><td>−${L.st.bestaandDubbel}</td></tr>` : ''}
+      ${L.st.verwijderd ? `<tr><td>&nbsp;&nbsp;waarvan verwijderd (nu afgewezen)</td><td>−${L.st.verwijderd}</td></tr>` : ''}
+      <tr><td>Nieuwe regels (het laadbestand)</td><td>${L.laad.length}</td></tr>
+      <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.st.totaal}</td></tr>` : `
+      <tr><td>Akkoord-regels en aangenomen voorstellen</td><td>${L.st.nieuw}</td></tr>
+      ${L.pub ? `<tr><td>&nbsp;&nbsp;waarvan al in ${esc(L.pub.bestand)} (overgeslagen)</td><td>−${L.st.dubbel}</td></tr>` : ''}
+      <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.laad.length}</td></tr>`;
+  const uitleg = volledig ? '<p>Dit bestand is <b>niet</b> voor OA. Bewaar het en laad het in de volgende ronde als gepubliceerde lijst.</p>'
+    : `<p>OA voegt deze regels toe aan de bestaande tabel.${L.pub ? '' : ' <b>Let op:</b> er is geen gepubliceerde lijst geladen, dus regels die OA al heeft, staan hier ook in.'}</p>`;
+  const html = `<p>Bestandsnaam: <b>${esc(naam)}</b></p>${uitleg}
+    <table class="samenv">${tabel}</table>
+    <p>Voorbeeld van de eerste regels:</p><pre class="voorbeeld">${esc(regels.slice(0, 12).join('\n'))}${rijen.length > 11 ? '\n…' : ''}</pre>`;
+  if (!await modal(volledig ? 'Samenvatting volledige lijst' : 'Samenvatting laadbestand', html, [{tekst: 'Annuleren', waarde: false}, {tekst: 'Opslaan', waarde: true, primair: true}])) return;
   download(naam, new Blob([new TextEncoder().encode(csv)], {type: 'text/csv'}));
-  toast(`${naam} opgeslagen (${L.st.totaal} regels).`, 'ok');
+  toast(`${naam} opgeslagen (${rijen.length} regels).`, 'ok');
+}
+
+function downloadTeVerwijderen() {
+  const L = maakLaadbestand(U());
+  let csv;
+  try { csv = naarOaCsv(L.st.afgewezenInBestaand); } catch (e) { return meld('Lijst niet gemaakt', `<pre class="voorbeeld">${esc(e.message)}</pre>`); }
+  const naam = `te-verwijderen-prk-regels-${stempel()}.csv`;
+  download(naam, new Blob([new TextEncoder().encode(csv)], {type: 'text/csv'}));
+  toast(`${naam} opgeslagen (${L.st.afgewezenInBestaand.length} regels). Stuur dit naar OA met het verzoek deze regels te verwijderen.`, 'ok');
 }
 
 function exporteerLogboek() {
   if (typeof XLSX === 'undefined') return meld('Excel niet beschikbaar', '<p>SheetJS is niet geladen.</p>');
   const u = U(), L = maakLaadbestand(u);
-  const inLaad = new Set(L.rijen.map(r => prkNorm(r.velden[0]) + '|' + prkNorm(r.velden[2])));
+  const sl = (a, b) => prkNorm(a) + '|' + prkNorm(b);
+  const inLaad = new Set(L.laad.map(r => sl(r.velden[0], r.velden[2]))), inVolledig = new Set(L.rijen.map(r => sl(r.velden[0], r.velden[2])));
+  const laadStatus = (a, b) => inLaad.has(sl(a, b)) ? 'ja' : inVolledig.has(sl(a, b)) ? 'al gepubliceerd' : 'nee';
   const reg = [['Prio', 'PRK', 'Stofnaam tekort', 'Voorraadklasse', 'Volgorde', 'Niveau', 'Categorie', 'PRK alternatief', 'Stofnaam alternatief', 'Voorbeeldartikel alternatief', 'Signaal', ...C.panel.flatMap(p => ['Oordeel ' + p.naam, 'Toelichting ' + p.naam]), 'Consensus', 'Reden', 'Afwijkend oordeel', 'Besluit na overleg', 'Notitie', 'Eindstatus', 'In laadbestand']];
   const volg = new Map(BRON.tekorten.map((t, i) => [t.prk, i]));
   const rr = u.regels.slice().sort((a, b) => volg.get(a.r.prk) - volg.get(b.r.prk) || a.r.volgorde - b.r.volgorde);
@@ -595,20 +619,21 @@ function exporteerLogboek() {
     const r = x.r;
     reg.push([isNaN(r.prio) ? '' : r.prio, prkUit(r.prk), r.stofT, r.voorraadklasse, isNaN(r.volgorde) ? '' : r.volgorde, r.niveau, r.categorie, prkUit(r.prkAlt), r.stofA, r.voorbeeldA, r.signaal,
       ...x.per.flatMap(p => [p.o ? OORDEEL_LABEL[p.o] : '', p.t]), statusLabel(x.cons, ''), x.reden, x.tegenstem ? 'ja' : '',
-      x.besluit && x.besluit.b ? (x.besluit.b === 'akkoord' ? 'Akkoord' : 'Afgewezen') : '', x.besluit ? x.besluit.notitie || '' : '', statusLabel(x.eind, x.cons), inLaad.has(prkNorm(r.prk) + '|' + prkNorm(r.prkAlt)) ? 'ja' : 'nee']);
+      x.besluit && x.besluit.b ? (x.besluit.b === 'akkoord' ? 'Akkoord' : 'Afgewezen') : '', x.besluit ? x.besluit.notitie || '' : '', statusLabel(x.eind, x.cons), laadStatus(r.prk, r.prkAlt)]);
   }
   const vs = [['PRK tekort', 'Stofnaam tekort', 'PRK voorstel', 'Generiek', 'Voorbeeldartikel', 'Soort', ...C.panel.flatMap(p => ['Categorie ' + voornaam(p.naam), 'Positie ' + voornaam(p.naam), 'Toelichting ' + voornaam(p.naam)]), 'Besluit', 'Categorie (besluit)', 'Positie (besluit)', 'Notitie', 'In laadbestand']];
   for (const v of u.voorstellen) {
     const b = v.besluit || {};
     vs.push([prkUit(v.tekortPrk), v.tekortNaam, prkUit(v.prk), v.generiek, v.voorbeeld, v.label, ...C.panel.flatMap(p => { const x = v.per[p.email]; return x ? [x.categorie, x.positie, x.toelichting] : ['', '', '']; }),
-      b.b === 'akkoord' ? 'Aangenomen' : b.b === 'afgewezen' ? 'Afgewezen' : 'Open', b.categorie || '', b.positie || '', b.notitie || '', inLaad.has(prkNorm(v.tekortPrk) + '|' + prkNorm(v.prk)) ? 'ja' : 'nee']);
+      b.b === 'akkoord' ? 'Aangenomen' : b.b === 'afgewezen' ? 'Afgewezen' : 'Open', b.categorie || '', b.positie || '', b.notitie || '', laadStatus(v.tekortPrk, v.prk)]);
   }
-  const laad = [OA_KOP.concat(['Herkomst']), ...L.rijen.map(r => r.velden.concat([r.herkomst]))];
+  const laad = [OA_KOP, ...L.laad.map(r => r.velden)];
+  const volledig = [OA_KOP.concat(['Herkomst']), ...L.rijen.map(r => r.velden.concat([r.herkomst]))];
   const info = [['Datum', leesbareDatum(new Date().toISOString())], ['Bronbestand', BRON.bestand], ['Vingerafdruk bron', BRON.vingerafdruk],
     ...C.panel.map(p => ['Beoordeling ' + p.naam, `${aantalBeoordeeldDoor(p.email)} van ${BRON.regels.length} regels beoordeeld`]),
     ['Gepubliceerde lijst', C.coordinatie.gepubliceerd ? C.coordinatie.gepubliceerd.bestand : 'niet geladen'], [],
     ['Consensusregels', 'Minimaal twee apothekers moeten het eens zijn met het eindoordeel. Minimaal twee keer Akkoord = Akkoord; minimaal twee keer Niet akkoord = Afgewezen; wel minimaal twee oordelen maar geen twee gelijke (of Bespreken) = Bespreken; minder dan twee oordelen = Onvolledig. Bij Bespreken legt de coördinator na het paneloverleg het eindbesluit vast.']];
-  download(`Logboek_consensus_${stempel()}.xlsx`, maakWerkmap([['Consensus', reg, [6, 9, 36, 11, 7, 22, 30, 10, 36, 44, 24, ...C.panel.flatMap(() => [13, 40]), 12, 34, 10, 14, 30, 20, 12]], ['Voorstellen', vs, [10, 36, 10, 36, 44, 34, ...C.panel.flatMap(() => [28, 8, 40]), 12, 28, 8, 30, 12]], ['Laadbestand', laad, [10, 40, 12, 40, 34, 22]], ['Info', info, [26, 100]]]));
+  download(`Logboek_consensus_${stempel()}.xlsx`, maakWerkmap([['Consensus', reg, [6, 9, 36, 11, 7, 22, 30, 10, 36, 44, 24, ...C.panel.flatMap(() => [13, 40]), 12, 34, 10, 14, 30, 20, 15]], ['Voorstellen', vs, [10, 36, 10, 36, 44, 34, ...C.panel.flatMap(() => [28, 8, 40]), 12, 28, 8, 30, 15]], ['Laadbestand', laad, [10, 40, 12, 40, 34]], ...(L.pub ? [['Volledige lijst', volledig, [10, 40, 12, 40, 34, 12]]] : []), ['Info', info, [26, 100]]]));
 }
 
 
@@ -1193,7 +1218,7 @@ function renderSlots() {
       <small>${w ? w.voorstellen.length : 0} eigen voorstel(len)${laatste(x.email) ? ' · ' + esc(laatste(x.email)) : ''}</small>
       ${achter ? '<div class="achter-label">Loopt het verst achter</div>' : ''}
       ${!klaar && x.email !== GEBRUIKER.email ? `<div class="knoppen"><a class="knop klein" href="${esc(herinneringMail(x, n))}" title="Opent een kant-en-klare mail in je eigen mailprogramma; je verstuurt hem zelf">✉ Herinnering mailen</a></div>` : ''}</div>`; }).join('')}
-    <div class="slot"><h3>Gepubliceerde lijst (optioneel)</h3>${p ? `<div class="status ok">✓ ${esc(p.bestand)}</div><small>${p.rijen.length} bestaande regels</small>` : `<div class="status leeg">Niet geladen</div><small>bijv. alternatieve-prk-regels-20260916.csv</small>`}
+    <div class="slot"><h3>Gepubliceerde lijst</h3>${p ? `<div class="status ok">✓ ${esc(p.bestand)}</div><small>${p.rijen.length} bestaande regels</small>` : `<div class="status leeg">Niet geladen</div><small>de huidige tabel in OA, bijv. alternatieve-prk-regels-20260916.csv; nodig om dubbele regels in OA te voorkomen</small>`}
       <div class="knoppen"><button class="knop klein" id="btnLaadPub">${p ? 'Vervangen…' : 'Lijst laden…'}</button>${p ? '<button class="knop klein gevaar" id="btnPubWeg">Verwijderen</button>' : ''}</div></div>`;
   $('#btnLaadPub').addEventListener('click', laadGepubliceerd);
   if ($('#btnPubWeg')) $('#btnPubWeg').addEventListener('click', async () => {
