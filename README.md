@@ -60,8 +60,9 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
   - Puntkomma als scheidingsteken, UTF-8 zonder BOM, regeleinde CRLF.
   - Alleen **nieuwe** regels: eindstatus Akkoord en nog niet in de gepubliceerde lijst.
   - Gesorteerd per tekort, daarbinnen in cascadevolgorde. Je ziet eerst een samenvatting.
+  - OA kan regels **niet verwijderen**: wat eenmaal in OA staat, blijft staan. Controleer het bestand dus goed voordat je het verstuurt.
 - **Export → Volledige lijst maken…:** de gepubliceerde lijst plus de nieuwe regels (`alternatieve-prk-regels-volledig-<jjjjmmdd>.csv`), zoals de tabel in OA er daarna uitziet. Niet naar OA sturen: bewaar hem en laad hem in de volgende ronde als gepubliceerde lijst.
-- **Afgewezen gepubliceerde regels:** een laadbestand kan niets uit OA weghalen. De app toont ze apart; met *Lijst te verwijderen regels downloaden* vraag je OA ze te verwijderen (en met het vinkje gaan ze ook uit de volledige lijst).
+- **Afgewezen gepubliceerde regels:** wijst het panel een advies af dat al in OA staat, dan blijft het daar toch staan (OA kan niets verwijderen, een laadbestand voegt alleen toe). De app toont ze apart; ze blijven ook in de volledige lijst.
 - **Logboek exporteren:** Excel met alle oordelen, uitkomsten en besluiten.
 - **Back-up:** download van alle oordelen en besluiten (JSON). Niet verplicht (alles staat al in de database), maar wel een goede extra kopie: maak er een na elk paneloverleg en vóór elke publicatie.
 

@@ -199,15 +199,9 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
     'laadbestand met gepubliceerde lijst: alleen nieuwe regels (wat OA al heeft, gaat er niet nog eens in)');
   const vol = await leesCsv('#btnVolledig');
   ok(vol.naam.startsWith('alternatieve-prk-regels-volledig-') && vol.regels.length === 3 + verwacht.length - 1 && vol.regels.includes(pubRegel(k[0])) && vol.regels.includes(pubRegel(k[5])),
-    'volledige lijst: gepubliceerd + nieuw, bestaande regels letterlijk (ook de nu afgewezen regel, standaard)');
-  const [tv] = await Promise.all([arnout.waitForEvent('download'), arnout.click('#btnTeVerwijderen')]);
-  const tvPad = path.join(require('os').tmpdir(), tv.suggestedFilename()); await tv.saveAs(tvPad);
-  ok(tv.suggestedFilename().startsWith('te-verwijderen-prk-regels-') && fs.readFileSync(tvPad, 'utf8') === `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie\r\n${pubRegel(k[5])}\r\n`,
-    'afgewezen gepubliceerde regel: apart lijstje om OA te vragen hem te verwijderen');
-  await arnout.click('#chkVerwijder'); await arnout.waitForFunction(() => window.LT.C.coordinatie.verwijderAfgewezen);
-  const vol2 = await leesCsv('#btnVolledig'), laad2 = await leesCsv('#btnCsv');
-  ok(!vol2.regels.includes(pubRegel(k[5])) && vol2.regels.length === vol.regels.length - 1 && laad2.regels.length === laad.regels.length, 'vinkje: afgewezen regel uit de volledige lijst, laadbestand ongewijzigd');
-  await arnout.click('#chkVerwijder'); await arnout.waitForFunction(() => !window.LT.C.coordinatie.verwijderAfgewezen);
+    'volledige lijst: gepubliceerd + nieuw, bestaande regels letterlijk (ook de nu afgewezen regel)');
+  ok((await arnout.textContent('#cinhoud')).includes('blijven in OA staan') && !(await arnout.$('#btnTeVerwijderen')) && !(await arnout.$('#chkVerwijder')),
+    'afgewezen gepubliceerde regel: melding dat hij in OA blijft staan (OA kan niets verwijderen), geen verwijderknop of vinkje');
   const [lg] = await Promise.all([arnout.waitForEvent('download'), arnout.click('#btnLog')]);
   const XLSX = require(path.join(REPO, 'vendor/xlsx.full.min.js')), lgPad = path.join(require('os').tmpdir(), lg.suggestedFilename()); await lg.saveAs(lgPad);
   const wb = XLSX.read(fs.readFileSync(lgPad)), logRegels = XLSX.utils.sheet_to_json(wb.Sheets.Consensus);

@@ -525,7 +525,8 @@ function afgewezenKeys(u) {
 function maakLaadbestand(u) {
   const {regels: nieuw, dubbel: dubbelIntern} = bouwNieuweRegels(BRON, u);
   const pub = C.coordinatie.gepubliceerd;
-  const {rijen, st} = samenvoegen(pub ? pub.rijen : null, nieuw, afgewezenKeys(u), !!C.coordinatie.verwijderAfgewezen);
+  // OA kan geen regels verwijderen: gepubliceerde regels blijven altijd in de volledige lijst, ook als het panel ze nu afwijst
+  const {rijen, st} = samenvoegen(pub ? pub.rijen : null, nieuw, afgewezenKeys(u), false);
   // OA voegt het laadbestand toe aan de bestaande tabel: het laadbestand bevat dus alleen de nieuwe regels.
   // De volledige lijst (gepubliceerd + nieuw) is voor de coördinator, om in de volgende ronde als gepubliceerde lijst te laden.
   return {nieuw, dubbelIntern, rijen, laad: rijen.filter(r => r.herkomst === 'nieuw'), st, pub};
@@ -551,20 +552,16 @@ function renderCExport(u) {
       ${vAk ? `<div class="melding fout">${vAk} aangenomen voorstel(len) hebben nog geen categorie en worden niet meegenomen.</div>` : ''}
       ${!L.pub ? `<div class="melding waarsch"><b>Laad eerst de gepubliceerde lijst</b> (bovenaan, de huidige tabel in OA). Zonder die lijst kan de app niet zien welke regels OA al heeft; die komen dan dubbel in OA.</div>` : ''}
       ${afgPub.length ? `<div class="melding waarsch"><b>${afgPub.length} regel(s) uit de gepubliceerde lijst zijn nu door het panel afgewezen:</b><ul>${afgPub.map(b => `<li class="mono">${esc(b.velden.join(';'))}</li>`).join('')}</ul>
-        <p style="margin:6px 0">OA heeft deze regels al. Een laadbestand voegt alleen toe en haalt ze <b>niet</b> weg. Wil je ze uit OA hebben, vraag OA dan om ze te verwijderen; stuur daarvoor dit lijstje mee.</p>
-        <button class="knop klein" id="btnTeVerwijderen">Lijst te verwijderen regels downloaden</button>
-        <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="chkVerwijder" ${C.coordinatie.verwijderAfgewezen ? 'checked' : ''}> Ik laat ze door OA verwijderen: haal ze ook uit de volledige lijst</label></div>` : ''}
+        <p style="margin:6px 0 0">OA kan geen regels verwijderen: deze adviezen <b>blijven in OA staan</b>. Ze staan daarom ook in de volledige lijst.</p></div>` : ''}
       <button class="knop primair" id="btnCsv" ${L.laad.length ? '' : 'disabled'}>Laadbestand maken…</button>
       ${L.laad.length ? '' : `<span style="color:var(--g2);margin-left:8px">${L.rijen.length ? 'Er zijn geen nieuwe akkoord-regels.' : 'Er zijn nog geen akkoord-regels.'}</span>`}
     </div>
-    ${L.pub ? `<div class="blok"><h2>Volledige lijst (voor de volgende ronde)</h2><p>De gepubliceerde lijst plus de nieuwe regels: zo ziet de tabel in OA eruit nadat het laadbestand is toegevoegd${C.coordinatie.verwijderAfgewezen && L.st.verwijderd ? ' en de afgewezen regels zijn verwijderd' : ''}. <b>Niet naar OA sturen.</b> Bewaar dit bestand en laad het in de volgende ronde bovenaan als gepubliceerde lijst.</p>
+    ${L.pub ? `<div class="blok"><h2>Volledige lijst (voor de volgende ronde)</h2><p>De gepubliceerde lijst plus de nieuwe regels: zo ziet de tabel in OA eruit nadat het laadbestand is toegevoegd. <b>Niet naar OA sturen.</b> Bewaar dit bestand en laad het in de volgende ronde bovenaan als gepubliceerde lijst.</p>
       <button class="knop" id="btnVolledig">Volledige lijst maken…</button></div>` : ''}
     <div class="blok"><h2>Logboek (Excel)</h2><p>Het volledige consensusoverzicht: per regel alle oordelen en toelichtingen, de consensus, het besluit na overleg en of de regel in het laadbestand staat. Plus de voorstellen, het laadbestand en de volledige lijst.</p>
       <button class="knop" id="btnLog">Logboek exporteren</button></div>
     <div class="blok"><h2>Back-up (extra kopie)</h2><p>Alles staat al in de database; een back-up is <b>niet verplicht</b>. Het is een extra kopie van alle oordelen, voorstellen en besluiten, voor als er iets misgaat. Supabase maakt op het gratis plan zelf geen back-ups die je kunt downloaden. Advies: maak er een na elk paneloverleg en vóór elke publicatie.</p>
       <button class="knop" id="btnBackup2">Back-up downloaden</button></div>`;
-  const chk = $('#chkVerwijder'); if (chk) chk.addEventListener('change', () => { C.coordinatie.verwijderAfgewezen = chk.checked; bewaarCoordinatie(); renderCExport(U()); });
-  if ($('#btnTeVerwijderen')) $('#btnTeVerwijderen').addEventListener('click', downloadTeVerwijderen);
   if ($('#btnVolledig')) $('#btnVolledig').addEventListener('click', () => toonCsvSamenvatting('volledig'));
   $('#btnCsv').addEventListener('click', () => toonCsvSamenvatting('laad'));
   $('#btnLog').addEventListener('click', exporteerLogboek);
@@ -581,29 +578,19 @@ async function toonCsvSamenvatting(soort) {
   const tabel = volledig ? `
       <tr><td>Bestaande regels (${esc(L.pub.bestand)})</td><td>${L.st.bestaand}</td></tr>
       ${L.st.bestaandDubbel ? `<tr><td>&nbsp;&nbsp;waarvan dubbel in de bestaande lijst (eenmaal behouden)</td><td>−${L.st.bestaandDubbel}</td></tr>` : ''}
-      ${L.st.verwijderd ? `<tr><td>&nbsp;&nbsp;waarvan verwijderd (nu afgewezen)</td><td>−${L.st.verwijderd}</td></tr>` : ''}
       <tr><td>Nieuwe regels (het laadbestand)</td><td>${L.laad.length}</td></tr>
       <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.st.totaal}</td></tr>` : `
       <tr><td>Akkoord-regels en aangenomen voorstellen</td><td>${L.st.nieuw}</td></tr>
       ${L.pub ? `<tr><td>&nbsp;&nbsp;waarvan al in ${esc(L.pub.bestand)} (overgeslagen)</td><td>−${L.st.dubbel}</td></tr>` : ''}
       <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.laad.length}</td></tr>`;
   const uitleg = volledig ? '<p>Dit bestand is <b>niet</b> voor OA. Bewaar het en laad het in de volgende ronde als gepubliceerde lijst.</p>'
-    : `<p>OA voegt deze regels toe aan de bestaande tabel.${L.pub ? '' : ' <b>Let op:</b> er is geen gepubliceerde lijst geladen, dus regels die OA al heeft, staan hier ook in.'}</p>`;
+    : `<p>OA voegt deze regels toe aan de bestaande tabel. <b>OA kan regels daarna niet meer verwijderen:</b> controleer het bestand goed voordat je het verstuurt.${L.pub ? '' : ' <b>Let op:</b> er is geen gepubliceerde lijst geladen, dus regels die OA al heeft, staan hier ook in.'}</p>`;
   const html = `<p>Bestandsnaam: <b>${esc(naam)}</b></p>${uitleg}
     <table class="samenv">${tabel}</table>
     <p>Voorbeeld van de eerste regels:</p><pre class="voorbeeld">${esc(regels.slice(0, 12).join('\n'))}${rijen.length > 11 ? '\n…' : ''}</pre>`;
   if (!await modal(volledig ? 'Samenvatting volledige lijst' : 'Samenvatting laadbestand', html, [{tekst: 'Annuleren', waarde: false}, {tekst: 'Opslaan', waarde: true, primair: true}])) return;
   download(naam, new Blob([new TextEncoder().encode(csv)], {type: 'text/csv'}));
   toast(`${naam} opgeslagen (${rijen.length} regels).`, 'ok');
-}
-
-function downloadTeVerwijderen() {
-  const L = maakLaadbestand(U());
-  let csv;
-  try { csv = naarOaCsv(L.st.afgewezenInBestaand); } catch (e) { return meld('Lijst niet gemaakt', `<pre class="voorbeeld">${esc(e.message)}</pre>`); }
-  const naam = `te-verwijderen-prk-regels-${stempel()}.csv`;
-  download(naam, new Blob([new TextEncoder().encode(csv)], {type: 'text/csv'}));
-  toast(`${naam} opgeslagen (${L.st.afgewezenInBestaand.length} regels). Stuur dit naar OA met het verzoek deze regels te verwijderen.`, 'ok');
 }
 
 function exporteerLogboek() {
