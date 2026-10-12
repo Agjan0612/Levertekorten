@@ -99,3 +99,18 @@ test('regels die al in OA staan: niet beoordelen, niet onvolledig, niet in het l
   const json = Kern.beoordelingNaarJson({beoordelaar: 'A', oordelen, voorstellen: []}, bron);
   assert.equal(json.aantalRegels, Kern.teBeoordelen(bron).length); assert.equal(json.aantalBeoordeeld, json.aantalRegels);
 });
+
+test('opzoeken: op naam, PRK en ZI; tekort, alternatief en gepubliceerde lijst', () => {
+  const z = Kern.zindexUitData(JSON.parse(fs.readFileSync(path.join(REPO, 'data/zindex.json'), 'utf8')));
+  const t = bron.tekorten[0], r = bron.regelMap.get(t.keys[0]);
+  const pub = [{velden: [t.prk, t.stofnaam, '999999', 'OUD ALTERNATIEF', 'AndereStof']}, {velden: ['888888', 'ANDER TEKORT', t.prk, t.stofnaam, 'AndereStof']}];
+  for (const q of [t.prk, t.stofnaam.toLowerCase()]) {
+    const x = Kern.opzoeken(q, bron, z, pub).relevant.find(y => y.prk === t.prk);
+    assert.ok(x && x.tekort === t && x.pubAdvies.length === 1 && x.pubAlsAlt.length === 1, q);
+  }
+  const zi = z.byPrk.get(t.prk) && z.byPrk.get(t.prk).zi;
+  if (zi) assert.ok(Kern.opzoeken(zi, bron, z, null).relevant.some(y => y.prk === t.prk), 'ZI-nummer');
+  assert.ok(Kern.opzoeken(r.prkAlt, bron, z, null).relevant.find(y => y.prk === r.prkAlt).alsAlt.some(a => a.key === r.key), 'als alternatief');
+  assert.deepEqual(Kern.opzoeken('x', bron, z, null), {relevant: [], overig: []});
+  assert.equal(Kern.opzoeken('qqqzzzonbekend', bron, z, null).relevant.length, 0);
+});

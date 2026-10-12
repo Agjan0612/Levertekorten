@@ -336,3 +336,11 @@ table.samenv tr.totaal td{border-top:1px solid var(--rand);padding-top:6px}
 .in-oa-label{display:inline-block;background:var(--blauw-zacht);color:var(--blauw);font-weight:bold;border-radius:4px;padding:3px 9px;font-size:13px}
 .in-oa-uitleg{font-size:12px;color:var(--g2);margin-top:4px}
 .stap .regel.in-oa{border-left-color:var(--blauw-zacht);background:#f7f9fb}
+
+/* Opzoeken (coördinator) */
+.zk-kaart h3{margin:0 0 2px;color:#123a57}
+.zk-kaart h3 .prk{font-size:13px;font-weight:normal;color:var(--g2);margin-left:6px}
+.zk-art{font-size:13px;color:var(--g2);margin-bottom:6px}
+.zk-deel{margin-top:10px;font-size:14px}
+.zk-deel ul{margin:4px 0 0;padding-left:20px}
+.zk-tabel{margin-top:6px}

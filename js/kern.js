@@ -544,6 +544,40 @@ function zoekZindex(zindex, q, max = 40) {
   return {totaal: res.length, items: res.slice(0, max).map(x => x[2])};
 }
 
+/* ---------- Opzoeken: staat een product in de lijst of al in OA? ----------
+   q: trefwoord(en), PRK of ZI-nummer. pubRijen: rijen van de gepubliceerde lijst ({velden}) of null.
+   Geeft per gevonden PRK waar het voorkomt. 'relevant' = komt voor in de lijst of in de gepubliceerde lijst. */
+function opzoeken(q, bron, zindex, pubRijen) {
+  q = String(q ?? '').trim();
+  const termen = q.toLowerCase().split(/\s+/).filter(Boolean);
+  if (q.length < 2 || !termen.length) return {relevant: [], overig: []};
+  const past = (...velden) => { const t = velden.join(' ').toLowerCase(); return termen.every(x => t.includes(x)); };
+  const prks = new Set();
+  if (/^\d+$/.test(q)) prks.add(prkNorm(q));
+  if (zindex) {
+    for (const p of zindex.prks) if (p.zi === q) prks.add(p.prk);
+    for (const p of zoekZindex(zindex, q, 300).items) prks.add(p.prk);
+  }
+  for (const t of [...bron.tekorten, ...bron.geenAlt]) if (past(t.stofnaam, t.voorbeeld || '', t.prk)) prks.add(t.prk);
+  for (const r of bron.regels) if (past(r.stofA, r.voorbeeldA || '', r.prkAlt)) prks.add(r.prkAlt);
+  for (const f of pubRijen || []) { if (past(f.velden[1], f.velden[0])) prks.add(prkNorm(f.velden[0])); if (past(f.velden[3], f.velden[2])) prks.add(prkNorm(f.velden[2])); }
+  const uit = [...prks].map(prk => {
+    const zi = zindex && zindex.byPrk ? zindex.byPrk.get(prk) : null;
+    const tekort = bron.tekorten.find(t => t.prk === prk) || null;
+    const geenAlt = bron.geenAlt.find(g => g.prk === prk) || null;
+    const alsAlt = bron.regels.filter(r => r.prkAlt === prk);
+    const pubAdvies = (pubRijen || []).filter(f => prkNorm(f.velden[0]) === prk).map(f => f.velden);
+    const pubAlsAlt = (pubRijen || []).filter(f => prkNorm(f.velden[2]) === prk).map(f => f.velden);
+    const naam = (zi && zi.generiek) || (tekort && tekort.stofnaam) || (geenAlt && geenAlt.stofnaam) || (alsAlt[0] && alsAlt[0].stofA) || (pubAdvies[0] && pubAdvies[0][1]) || (pubAlsAlt[0] && pubAlsAlt[0][3]) || '';
+    return {prk, naam, voorbeeld: zi ? zi.voorbeeld : '', zi: zi ? zi.zi : '', tekort, geenAlt, alsAlt, pubAdvies, pubAlsAlt,
+      relevant: !!(tekort || geenAlt || alsAlt.length || pubAdvies.length || pubAlsAlt.length)};
+  });
+  const gewicht = x => (x.tekort || x.geenAlt ? 0 : x.pubAdvies.length ? 1 : 2);
+  const relevant = uit.filter(x => x.relevant).sort((a, b) => gewicht(a) - gewicht(b) || a.naam.localeCompare(b.naam));
+  const overig = uit.filter(x => !x.relevant && x.naam).sort((a, b) => a.naam.localeCompare(b.naam));
+  return {relevant, overig};
+}
+
 /* ---------- Uitkomsten over het hele panel ----------
    panel: [{email, naam}] (de beoordelaars)
    werkPer: {email: {oordelen: {sleutel: {o, t}}, voorstellen: [...]}}
@@ -602,7 +636,7 @@ const Kern = {
   alInOA, teBeoordelen, normKop, tekst, prkStr, prkNorm, num, fmtNum, pad, stempel, leesbareDatum, prkSort, prkUit, vingerafdruk, klasseCls, nivCls,
   isVersleuteld, parseBron, indexeerBron, bronNaarData, parseBronnen, parseZindex, zindexNaarData, zindexUitData, zoekZindex, vergelijkRoute,
   geldigOordeel, beoordelingNaarJson, parseBeoordeling, consensus, redenConsensus, eindStatus, statusLabel,
-  berekenUitkomsten, standaardVoorstelBesluit, bouwNieuweRegels, samenvoegen, naarOaCsv, parseGepubliceerd
+  berekenUitkomsten, opzoeken, standaardVoorstelBesluit, bouwNieuweRegels, samenvoegen, naarOaCsv, parseGepubliceerd
 };
 if (typeof module === 'object' && module.exports) module.exports = Kern; else root.Kern = Kern;
 })(typeof window !== 'undefined' ? window : globalThis);
