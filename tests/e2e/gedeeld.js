@@ -215,6 +215,13 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   const inLaad = key => (logRegels.find(r => r.PRK + '|' + r['PRK alternatief'] === key) || {})['In laadbestand'];
   ok(wb.SheetNames.includes('Volledige lijst') && XLSX.utils.sheet_to_json(wb.Sheets.Laadbestand).length === laad.regels.length && inLaad(k[0]) === 'al gepubliceerd' && inLaad(k[1]) === 'ja' && inLaad(k[5]) === 'al gepubliceerd',
     'logboek: tabbladen Laadbestand (alleen nieuw) en Volledige lijst; "In laadbestand" zegt ja of al gepubliceerd');
+  await arnout.click('#ctabs button[data-tab=opzoeken]'); await arnout.waitForSelector('#zkInvoer');
+  await arnout.fill('#zkInvoer', k[0].split('|')[0]);
+  ok((await arnout.textContent('#zkUit')).includes('Tekort in de huidige lijst') && (await arnout.textContent('#zkUit')).includes('In OA: 1 advies'),
+    'Opzoeken op PRK: tekort in de lijst met de stand, en het advies dat al in OA staat');
+  await arnout.fill('#zkInvoer', 'qqqzzzonbekend');
+  ok((await arnout.textContent('#zkUit')).includes('komt niet voor in de huidige lijst en niet in de gepubliceerde lijst'), 'Opzoeken: duidelijke melding als niets gevonden');
+  await arnout.click('#ctabs button[data-tab=export]'); await arnout.waitForSelector('#btnPubWeg');
   await arnout.click('#btnPubWeg'); await arnout.click('#modal .acties button.gevaar, #modal .acties button.primair');
   await arnout.waitForFunction(() => !window.LT.C.coordinatie.gepubliceerd);
 

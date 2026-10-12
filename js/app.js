@@ -4,7 +4,7 @@
 const {APP, MIN_EENS, Fout, voornaam, CATEGORIEEN, CAT_UITLEG, OORDEEL_LABEL, OA_KOP, normKop, tekst, prkNorm, num, fmtNum, stempel,
   leesbareDatum, prkUit, klasseCls, nivCls, indexeerBron, parseBronnen, zindexUitData, zoekZindex, vergelijkRoute, geldigOordeel,
   beoordelingNaarJson, parseBeoordeling, statusLabel, berekenUitkomsten, standaardVoorstelBesluit, bouwNieuweRegels, samenvoegen,
-  naarOaCsv, parseGepubliceerd, alInOA, teBeoordelen} = Kern;
+  naarOaCsv, parseGepubliceerd, alInOA, teBeoordelen, opzoeken} = Kern;
 const nTeBeoordelen = () => teBeoordelen(BRON).length;
 const teKeys = t => t.keys.filter(k => !alInOA(BRON.regelMap.get(k))); // regels van een tekort die het panel beoordeelt
 
@@ -13,7 +13,7 @@ let TAB = 'alt', CTAB = 'overzicht', ACTIEF = null;
 // Beoordelen: 'stap' = één tekort per scherm (standaard), 'lijst' = alle tekorten onder elkaar met filters
 let MODUS = 'stap', STAP = 0, STAP_EINDE = false;
 const FILTER = {klasse: '', niveau: '', open: false, zoek: ''};
-const CFILTER = {bespreken: 'open', alle: '', zoek: '', voorstel: 'open'};
+const CFILTER = {bespreken: 'open', alle: '', zoek: '', voorstel: 'open', opzoek: ''};
 const FORMS = {}; // open voorstel-formulieren per tekort
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -547,6 +547,46 @@ function maakLaadbestand(u) {
   return {nieuw, dubbelIntern, rijen, laad: rijen.filter(r => r.herkomst === 'nieuw'), st, pub};
 }
 
+/* Opzoeken: staat een product (trefwoord, PRK of ZI) in de huidige lijst of al in OA? */
+function renderCOpzoeken(u) {
+  $('#cinhoud').innerHTML = `<div class="blok"><h2>Opzoeken</h2>
+      <p>Zoek op naam, merknaam, PRK of ZI-nummer. Je ziet of het product in de huidige lijst staat (als tekort of als alternatief, met de stand van het panel) en of het al in OA staat.</p>
+      <div class="filters"><input type="search" id="zkInvoer" placeholder="Bijv. tramadol druppels, xarelto, 40967 of 14761718" value="${esc(CFILTER.opzoek)}" style="flex:1;min-width:260px"></div></div>
+    <div id="zkUit"></div>`;
+  const inv = $('#zkInvoer');
+  inv.addEventListener('input', () => { CFILTER.opzoek = inv.value; $('#zkUit').innerHTML = htmlOpzoekResultaat(U()); });
+  $('#zkUit').innerHTML = htmlOpzoekResultaat(u);
+  if (!CFILTER.opzoek) inv.focus();
+}
+function htmlOpzoekResultaat(u) {
+  const q = CFILTER.opzoek.trim(), pub = C.coordinatie.gepubliceerd;
+  if (q.length < 2) return '';
+  const {relevant, overig} = opzoeken(q, BRON, ZINDEX, pub ? pub.rijen : null);
+  const perKey = new Map(u.regels.map(x => [x.r.key, x]));
+  const st = r => { const x = perKey.get(r.key); return x ? stBadge(x.eind, x.cons) : ''; };
+  const mono = v => `<span class="mono">${esc(v.join(';'))}</span>`;
+  const geenPub = pub ? '' : '<div class="melding">Er is geen gepubliceerde lijst geladen. Laad die bovenaan (tegel <i>Gepubliceerde lijst</i>) om ook te zien wat al in OA staat.</div>';
+  const kaart = x => {
+    const delen = [];
+    if (x.tekort) delen.push(`<div class="zk-deel"><b>Tekort in de huidige lijst</b> (prio ${esc(fmtNum(x.tekort.prio))}${x.tekort.voorraadklasse ? ', voorraad Mosadex: ' + esc(x.tekort.voorraadklasse) : ''}) met ${x.tekort.keys.length} alternatie${x.tekort.keys.length === 1 ? 'f' : 'ven'}:
+      <table class="tabel zk-tabel"><tr><th>Vlg</th><th>Alternatief</th><th>Categorie</th><th>Stand</th></tr>${x.tekort.keys.map(k => BRON.regelMap.get(k)).map(r => `<tr><td>${esc(fmtNum(r.volgorde))}</td><td class="naam">${esc(r.stofA)}<br><small>PRK ${esc(r.prkAlt)}</small></td><td>${catTekst(r.categorie)}</td><td>${st(r)}</td></tr>`).join('')}</table></div>`);
+    if (x.geenAlt) delen.push(`<div class="zk-deel"><b>Tekort in de huidige lijst, zonder alternatief</b> (prio ${esc(fmtNum(x.geenAlt.prio))})${x.geenAlt.reden ? ': ' + esc(x.geenAlt.reden) : ''}</div>`);
+    const vs = u.voorstellen.filter(v => v.tekortPrk === x.prk || v.prk === x.prk);
+    if (vs.length) delen.push(`<div class="zk-deel"><b>Voorstellen van het panel:</b><ul>${vs.map(v => `<li>${esc(v.generiek)} (PRK ${esc(v.prk)}) bij ${esc(v.tekortNaam)} · ${esc(v.label)}${v.eind !== 'bespreken' ? ' · ' + (v.eind === 'akkoord' ? 'aangenomen' : 'afgewezen') : ''}</li>`).join('')}</ul></div>`);
+    if (x.alsAlt.length) delen.push(`<div class="zk-deel"><b>Alternatief in de huidige lijst</b> bij:<ul>${x.alsAlt.map(r => `<li>${esc(r.stofT)} (PRK ${esc(r.prk)}) ${st(r)}</li>`).join('')}</ul></div>`);
+    if (pub) {
+      if (x.pubAdvies.length) delen.push(`<div class="zk-deel"><b>In OA: ${x.pubAdvies.length} advie${x.pubAdvies.length === 1 ? 's' : 'zen'}</b> bij dit product:<ul>${x.pubAdvies.map(v => `<li>${esc(v[3])} (PRK ${esc(v[2])}) · ${catTekst(v[4], true)}</li>`).join('')}</ul></div>`);
+      else if (x.tekort || x.geenAlt) delen.push('<div class="zk-deel"><b>Nog geen advies in OA</b> voor dit product.</div>');
+      if (x.pubAlsAlt.length) delen.push(`<div class="zk-deel"><b>In OA als alternatief</b> bij:<ul>${x.pubAlsAlt.map(v => `<li>${esc(v[1])} (PRK ${esc(v[0])})</li>`).join('')}</ul></div>`);
+    }
+    return `<div class="blok zk-kaart"><h3>${esc(x.naam || 'PRK ' + x.prk)} <span class="prk">PRK ${esc(x.prk)}</span></h3>${x.voorbeeld ? `<div class="zk-art">${esc(x.voorbeeld)}${x.zi ? ' · ZI ' + esc(x.zi) : ''}</div>` : ''}${delen.join('')}</div>`;
+  };
+  const rest = overig.filter(x => x.naam);
+  return geenPub + (relevant.length ? relevant.slice(0, 30).map(kaart).join('') + (relevant.length > 30 ? `<p class="telling">… en nog ${relevant.length - 30}. Maak de zoekterm specifieker.</p>` : '')
+      : `<div class="leeg-staat">“${esc(q)}” komt niet voor in de huidige lijst${pub ? ' en niet in de gepubliceerde lijst' : ''}.</div>`)
+    + (rest.length ? `<details class="blok"><summary>Ook in de Z-index, maar niet in de lijst${pub ? ' en niet in OA' : ''} (${rest.length})</summary><p style="font-size:13px">${rest.slice(0, 60).map(x => `${esc(x.naam)} (PRK ${esc(x.prk)})`).join(' · ')}${rest.length > 60 ? ' …' : ''}</p></details>` : '');
+}
+
 function renderCExport(u) {
   const L = maakLaadbestand(u);
   const open = u.regels.filter(x => x.eind === 'bespreken').length, onv = u.regels.filter(x => x.eind === 'onvolledig').length;
@@ -770,7 +810,7 @@ function renderCTabs() {
   const u = U();
   const nB = u.regels.filter(x => x.cons === 'bespreken').length, nBo = u.regels.filter(x => x.cons === 'bespreken' && x.eind === 'bespreken').length;
   const nV = u.voorstellen.length, nVo = u.voorstellen.filter(v => v.eind === 'bespreken').length;
-  const tabs = [['overzicht', 'Overzicht', ''], ['bespreken', 'Bespreken', `${nBo} open / ${nB}`], ['voorstellen', 'Voorstellen', `${nVo} open / ${nV}`], ['alle', 'Alle regels', BRON.regels.length], ['export', 'Export', '']];
+  const tabs = [['overzicht', 'Overzicht', ''], ['bespreken', 'Bespreken', `${nBo} open / ${nB}`], ['voorstellen', 'Voorstellen', `${nVo} open / ${nV}`], ['alle', 'Alle regels', BRON.regels.length], ['opzoeken', 'Opzoeken', ''], ['export', 'Export', '']];
   $('#ctabs').innerHTML = tabs.map(([k, l, n]) => `<button data-tab="${k}" class="${CTAB === k ? 'actief' : ''}">${l}${n !== '' ? ` <span class="n">(${n})</span>` : ''}</button>`).join('');
   $$('#ctabs button').forEach(b => b.addEventListener('click', () => { CTAB = b.dataset.tab; renderCTabs(); }));
   const el = $('#cinhoud');
@@ -778,6 +818,7 @@ function renderCTabs() {
   else if (CTAB === 'bespreken') renderCBespreken(u);
   else if (CTAB === 'voorstellen') renderCVoorstellen(u);
   else if (CTAB === 'alle') renderCAlle(u);
+  else if (CTAB === 'opzoeken') renderCOpzoeken(u);
   else renderCExport(u);
 }
 
