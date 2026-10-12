@@ -4,7 +4,9 @@
 const {APP, MIN_EENS, Fout, voornaam, CATEGORIEEN, CAT_UITLEG, OORDEEL_LABEL, OA_KOP, normKop, tekst, prkNorm, num, fmtNum, stempel,
   leesbareDatum, prkUit, klasseCls, nivCls, indexeerBron, parseBronnen, zindexUitData, zoekZindex, vergelijkRoute, geldigOordeel,
   beoordelingNaarJson, parseBeoordeling, statusLabel, berekenUitkomsten, standaardVoorstelBesluit, bouwNieuweRegels, samenvoegen,
-  naarOaCsv, parseGepubliceerd} = Kern;
+  naarOaCsv, parseGepubliceerd, alInOA, teBeoordelen} = Kern;
+const nTeBeoordelen = () => teBeoordelen(BRON).length;
+const teKeys = t => t.keys.filter(k => !alInOA(BRON.regelMap.get(k))); // regels van een tekort die het panel beoordeelt
 
 let BRON = null, ZINDEX = null, GEBRUIKER = null, WERK = null, C = null, VIEW = null;
 let TAB = 'alt', CTAB = 'overzicht', ACTIEF = null;
@@ -95,7 +97,7 @@ function renderTabs() {
 }
 
 function updateVoortgang() {
-  const n = aantalBeoordeeld(), tot = BRON.regels.length;
+  const n = aantalBeoordeeld(), tot = nTeBeoordelen();
   const el = $('#vgTekst'); if (!el) return;
   el.innerHTML = `<b>${n}</b> van ${tot} regels beoordeeld · ${WERK.voorstellen.length} eigen voorstel${WERK.voorstellen.length === 1 ? '' : 'len'}`;
   $('#vgVul').style.width = (tot ? 100 * n / tot : 0) + '%';
@@ -107,7 +109,7 @@ function zoekMatch(q, ...velden) { q = q.trim().toLowerCase(); if (!q) return tr
 function regelZichtbaar(r) {
   if (FILTER.klasse && r.voorraadklasse !== FILTER.klasse) return false;
   if (FILTER.niveau && r.niveau !== FILTER.niveau) return false;
-  if (FILTER.open && geldigOordeel(WERK.oordelen[r.key])) return false;
+  if (FILTER.open && (alInOA(r) || geldigOordeel(WERK.oordelen[r.key]))) return false;
   return true;
 }
 
@@ -164,8 +166,8 @@ function htmlTekortInfo(prk, basis) {
 }
 
 function tekortVoortgangTekst(t) {
-  const n = t.keys.filter(k => geldigOordeel(WERK.oordelen[k])).length;
-  return [n, t.keys.length];
+  const keys = teKeys(t), n = keys.filter(k => geldigOordeel(WERK.oordelen[k])).length;
+  return [n, keys.length];
 }
 
 function htmlTekortKaart(t, zicht) {
@@ -173,10 +175,10 @@ function htmlTekortKaart(t, zicht) {
   return `<section class="kaart" data-tekort="${esc(t.prk)}">
     <div class="k-kop"><span class="prio">Prio ${esc(fmtNum(t.prio))}</span><h2>${esc(t.stofnaam)}</h2><span class="prk">PRK ${esc(t.prk)}</span>
       ${badgeVoorraad(t.voorraadklasse)}
-      <span class="k-vg ${n === tot ? 'klaar' : ''}" data-vg="${esc(t.prk)}">${n} van ${tot} beoordeeld</span></div>
+      <span class="k-vg ${n === tot ? 'klaar' : ''}" data-vg="${esc(t.prk)}">${tot ? `${n} van ${tot} beoordeeld` : 'staat al in OA'}</span></div>
     ${htmlTekortInfo(t.prk, t)}
     <div class="regels-kop"><div>Vlg</div><div>Alternatief</div><div>Categorie · niveau</div><div>Onderbouwing en bronnen</div><div>Jouw oordeel</div></div>
-    <div class="regels">${zicht.map(htmlRegel).join('')}${zicht.length < tot ? `<div class="regel" style="display:block;color:var(--g2);font-size:12px">${tot - zicht.length} andere regel(s) bij dit tekort verborgen door de filters.</div>` : ''}</div>
+    <div class="regels">${zicht.map(htmlRegel).join('')}${zicht.length < t.keys.length ? `<div class="regel" style="display:block;color:var(--g2);font-size:12px">${t.keys.length - zicht.length} andere regel(s) bij dit tekort verborgen door de filters.</div>` : ''}</div>
     ${htmlVoorstellenBlok(t.prk)}
   </section>`;
 }
@@ -206,7 +208,19 @@ function htmlZiControle(r) {
   return uit;
 }
 
+// Regel die al in OA staat: alleen ter informatie, zonder oordeelknoppen (data-oa i.p.v. data-key, zodat klik- en toetsenbordluisteraars hem overslaan)
+function htmlRegelInOA(r) {
+  return `<div class="regel in-oa" data-oa="${esc(r.key)}">
+    <div class="r-vlg" title="Positie in de cascade">${esc(fmtNum(r.volgorde))}</div>
+    <div class="r-alt"><div class="naam">${esc(r.stofA)}</div><div class="art">${esc(r.voorbeeldA)}</div><div class="meta">PRK ${esc(r.prkAlt)}${r.atcA ? ' · ATC ' + esc(r.atcA) : ''}</div></div>
+    <div class="r-cat"><span class="cat" title="Code in het laadbestand: ${esc(r.categorie)}">${esc(CAT_UITLEG[r.categorie] || r.categorie)}</span><span class="niv ${nivCls(r.niveau)}">${esc(r.niveau)}</span></div>
+    <div class="r-onder">${r.onderbouwing ? `<div>${esc(r.onderbouwing)}</div>` : ''}</div>
+    <div class="r-oordeel"><div class="in-oa-label">✓ Staat al in OA</div><div class="in-oa-uitleg">Dit advies is al gepubliceerd. Je hoeft het niet te beoordelen.</div></div>
+  </div>`;
+}
+
 function htmlRegel(r) {
+  if (alInOA(r)) return htmlRegelInOA(r);
   const oo = WERK.oordelen[r.key] || {}, o = oo.o || '', t = oo.t || '';
   return `<div class="regel ${o ? 'o-' + o : ''} ${t ? 'toel-open' : ''}" data-key="${esc(r.key)}">
     <div class="r-vlg" title="Positie in de cascade">${esc(fmtNum(r.volgorde))}</div>
@@ -228,7 +242,7 @@ function updateRegelDom(key) {
   const r = BRON.regelMap.get(key);
   const t = BRON.tekorten.find(x => x.prk === r.prk);
   const vg = $(`.k-vg[data-vg="${CSS.escape(r.prk)}"]`);
-  if (vg && t) { const [n, tot] = tekortVoortgangTekst(t); vg.textContent = `${n} van ${tot} beoordeeld`; vg.classList.toggle('klaar', n === tot); }
+  if (vg && t) { const [n, tot] = tekortVoortgangTekst(t); vg.textContent = tot ? `${n} van ${tot} beoordeeld` : 'staat al in OA'; vg.classList.toggle('klaar', n === tot); }
   updateVoortgang();
 }
 
@@ -371,7 +385,7 @@ function exporteerBeoordelingXlsx() {
   const regels = [['Prio', 'PRK', 'Stofnaam tekort', 'Volgorde', 'Niveau', 'Categorie', 'PRK alternatief', 'Stofnaam alternatief', 'Voorbeeldartikel alternatief', 'Oordeel', 'Toelichting']];
   for (const t of BRON.tekorten) for (const k of t.keys) {
     const r = BRON.regelMap.get(k), oo = WERK.oordelen[k];
-    regels.push([isNaN(r.prio) ? '' : r.prio, prkUit(r.prk), r.stofT, isNaN(r.volgorde) ? '' : r.volgorde, r.niveau, r.categorie, prkUit(r.prkAlt), r.stofA, r.voorbeeldA, geldigOordeel(oo) ? OORDEEL_LABEL[oo.o] : '', oo ? oo.t || '' : '']);
+    regels.push([isNaN(r.prio) ? '' : r.prio, prkUit(r.prk), r.stofT, isNaN(r.volgorde) ? '' : r.volgorde, r.niveau, r.categorie, prkUit(r.prkAlt), r.stofA, r.voorbeeldA, alInOA(r) ? 'staat al in OA' : geldigOordeel(oo) ? OORDEEL_LABEL[oo.o] : '', oo ? oo.t || '' : '']);
   }
   const vs = [['PRK tekort', 'Stofnaam tekort', 'PRK voorstel', 'Generiek', 'Voorbeeldartikel', 'ATC', 'Toedieningsweg', 'Categorie', 'Positie', 'Toelichting']];
   for (const v of WERK.voorstellen) vs.push([prkUit(v.tekortPrk), v.tekortNaam, prkUit(v.prk), v.generiek, v.voorbeeld, v.atc, v.route, v.categorie, v.positie, v.toelichting]);
@@ -413,6 +427,7 @@ function htmlCOverzicht(u) {
         ${tegenN ? `<tr><td>&nbsp;&nbsp;waarvan met een afwijkend oordeel</td><td>${tegenN}</td></tr>` : ''}
         ${Object.entries(redenen).map(([r, n]) => `<tr><td>Bespreken – ${esc(r)}</td><td>${n}</td></tr>`).join('')}
         <tr><td>Onvolledig</td><td>${onv.length}</td></tr>
+        ${c(x => x.cons === 'inoa') ? `<tr><td>Staat al in OA (niet beoordeeld)</td><td>${c(x => x.cons === 'inoa')}</td></tr>` : ''}
         <tr class="totaal"><td>Totaal</td><td>${u.regels.length}</td></tr>
       </table>
       ${onv.length ? `<details><summary>Welke regels zijn onvolledig?</summary><table class="tabel" style="margin-top:8px"><tr><th>Tekort</th><th>Alternatief</th>${C.panel.map(p => `<th>${esc(voornaam(p.naam))}</th>`).join('')}</tr>${onv.slice(0, 400).map(x => `<tr><td class="naam">${esc(x.r.stofT)}</td><td class="naam">${esc(x.r.stofA)}</td>${x.per.map(p => `<td>${ooBadge(p.o)}</td>`).join('')}</tr>`).join('')}</table></details>` : ''}
@@ -502,7 +517,7 @@ function renderCTabsAlleenKop() {
 }
 
 function renderCAlle(u) {
-  const statussen = ['akkoord', 'afgewezen', 'bespreken', 'onvolledig'];
+  const statussen = ['akkoord', 'afgewezen', 'bespreken', 'onvolledig', 'inoa'];
   const lijst = u.regels.filter(x => (!CFILTER.alle || (CFILTER.alle === 'tegenstem' ? x.tegenstem && x.eind !== 'bespreken' : x.eind === CFILTER.alle)) && zoekMatch(CFILTER.zoek, x.r.stofT, x.r.stofA, x.r.prk, x.r.prkAlt));
   const volg = new Map(BRON.tekorten.map((t, i) => [t.prk, i]));
   lijst.sort((a, b) => volg.get(a.r.prk) - volg.get(b.r.prk) || a.r.volgorde - b.r.volgorde);
@@ -510,7 +525,7 @@ function renderCAlle(u) {
       <select id="caStatus"><option value="">Alle eindstatussen</option>${statussen.map(s => `<option value="${s}" ${CFILTER.alle === s ? 'selected' : ''}>${statusLabel(s, '')}</option>`).join('')}<option value="tegenstem" ${CFILTER.alle === 'tegenstem' ? 'selected' : ''}>Eindoordeel met afwijkend oordeel</option></select>
       <input type="search" id="caZoek" placeholder="Zoek op stofnaam of PRK" value="${esc(CFILTER.zoek)}"><span class="telling">${lijst.length} regels</span></div>
     <table class="tabel"><thead><tr><th>Prio</th><th>Tekort</th><th>Vlg</th><th>Alternatief</th><th>Categorie</th>${C.panel.map(p => `<th>${esc(voornaam(p.naam))}</th>`).join('')}<th>Eindstatus</th></tr></thead><tbody>
-    ${lijst.map(x => `<tr><td>${esc(fmtNum(x.r.prio))}</td><td class="naam">${esc(x.r.stofT)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prk)}</small></td><td>${esc(fmtNum(x.r.volgorde))}</td><td class="naam">${esc(x.r.stofA)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prkAlt)} · ${esc(x.r.niveau)}</small></td><td>${catTekst(x.r.categorie)}</td>${x.per.map(p => `<td>${ooBadge(p.o)}${p.t ? `<div style="font-size:12px;white-space:pre-wrap">${esc(p.t)}</div>` : ''}</td>`).join('')}<td>${stBadge(x.eind, x.cons)}${x.tegenstem && x.eind !== 'bespreken' ? ' <span class="st tegen">afwijkend oordeel</span>' : ''}${x.reden ? `<div style="font-size:12px;color:var(--g2)">${esc(x.reden)}</div>` : ''}${x.besluit && x.besluit.notitie ? `<div style="font-size:12px">${esc(x.besluit.notitie)}</div>` : ''}</td></tr>`).join('')}
+    ${lijst.map(x => `<tr><td>${esc(fmtNum(x.r.prio))}</td><td class="naam">${esc(x.r.stofT)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prk)}</small></td><td>${esc(fmtNum(x.r.volgorde))}</td><td class="naam">${esc(x.r.stofA)}<br><small style="color:var(--g2)">PRK ${esc(x.r.prkAlt)} · ${esc(x.r.niveau)}</small></td><td>${catTekst(x.r.categorie)}</td>${x.per.map(p => `<td>${x.cons === 'inoa' ? '–' : ooBadge(p.o)}${p.t ? `<div style="font-size:12px;white-space:pre-wrap">${esc(p.t)}</div>` : ''}</td>`).join('')}<td>${stBadge(x.eind, x.cons)}${x.tegenstem && x.eind !== 'bespreken' ? ' <span class="st tegen">afwijkend oordeel</span>' : ''}${x.reden ? `<div style="font-size:12px;color:var(--g2)">${esc(x.reden)}</div>` : ''}${x.besluit && x.besluit.notitie ? `<div style="font-size:12px">${esc(x.besluit.notitie)}</div>` : ''}</td></tr>`).join('')}
     </tbody></table>`;
   $('#caStatus').addEventListener('change', e => { CFILTER.alle = e.target.value; renderCAlle(U()); });
   $('#caZoek').addEventListener('input', e => { CFILTER.zoek = e.target.value; const pos = e.target.selectionStart; renderCAlle(U()); const z = $('#caZoek'); z.focus(); z.setSelectionRange(pos, pos); });
@@ -525,8 +540,11 @@ function afgewezenKeys(u) {
 function maakLaadbestand(u) {
   const {regels: nieuw, dubbel: dubbelIntern} = bouwNieuweRegels(BRON, u);
   const pub = C.coordinatie.gepubliceerd;
-  const {rijen, st} = samenvoegen(pub ? pub.rijen : null, nieuw, afgewezenKeys(u), !!C.coordinatie.verwijderAfgewezen);
-  return {nieuw, dubbelIntern, rijen, st, pub};
+  // OA kan geen regels verwijderen: gepubliceerde regels blijven altijd in de volledige lijst, ook als het panel ze nu afwijst
+  const {rijen, st} = samenvoegen(pub ? pub.rijen : null, nieuw, afgewezenKeys(u), false);
+  // OA voegt het laadbestand toe aan de bestaande tabel: het laadbestand bevat dus alleen de nieuwe regels.
+  // De volledige lijst (gepubliceerd + nieuw) is voor de coördinator, om in de volgende ronde als gepubliceerde lijst te laden.
+  return {nieuw, dubbelIntern, rijen, laad: rijen.filter(r => r.herkomst === 'nieuw'), st, pub};
 }
 
 function renderCExport(u) {
@@ -537,57 +555,65 @@ function renderCExport(u) {
   const afgPub = L.st.afgewezenInBestaand;
   $('#cinhoud').innerHTML = `
     <div class="blok"><h2>OA-laadbestand (CSV)</h2>
-      <p>Alleen regels met eindstatus <b>Akkoord</b> (consensus of besluit na overleg) en aangenomen voorstellen. Formaat: <span class="mono">${OA_KOP.join(';')}</span>, puntkomma, UTF-8 zonder BOM, regeleinde CRLF. Sortering per tekort (PRK), daarbinnen de cascadevolgorde.</p>
+      <p>OA <b>voegt</b> het laadbestand <b>toe</b> aan de bestaande tabel. Het bestand bevat daarom alleen de <b>nieuwe</b> regels: regels met eindstatus <b>Akkoord</b> (consensus of besluit na overleg) en aangenomen voorstellen die nog niet in de gepubliceerde lijst staan. Formaat: <span class="mono">${OA_KOP.join(';')}</span>, puntkomma, UTF-8 zonder BOM, regeleinde CRLF. Sortering per tekort (PRK), daarbinnen de cascadevolgorde.</p>
       <table class="samenv">
-        <tr><td>Nieuwe akkoord-regels uit de lijst</td><td>${L.nieuw.filter(n => n.herkomst.startsWith('lijst')).length}</td></tr>
+        <tr><td>Akkoord-regels uit de lijst</td><td>${L.nieuw.filter(n => n.herkomst.startsWith('lijst')).length}</td></tr>
         <tr><td>Aangenomen voorstellen</td><td>${L.nieuw.filter(n => n.herkomst.startsWith('voorstel')).length}</td></tr>
         ${L.dubbelIntern ? `<tr><td>Overgeslagen (voorstel gelijk aan een regel uit de lijst)</td><td>${L.dubbelIntern}</td></tr>` : ''}
-        ${L.pub ? `<tr><td>Bestaande regels in ${esc(L.pub.bestand)}</td><td>${L.st.bestaand}</td></tr>` : ''}
+        ${L.pub ? `<tr><td>Overgeslagen: staan al in ${esc(L.pub.bestand)}</td><td>−${L.st.dubbel}</td></tr>` : ''}
+        <tr class="totaal"><td>Regels in het laadbestand</td><td>${L.laad.length}</td></tr>
       </table>
       ${open || onv || vOpen ? `<div class="melding waarsch">Nog niet afgerond: ${open} regel(s) Bespreken zonder besluit, ${onv} Onvolledig, ${vOpen} voorstel(len) zonder besluit. Deze komen <b>niet</b> in het laadbestand.</div>` : ''}
       ${vAk ? `<div class="melding fout">${vAk} aangenomen voorstel(len) hebben nog geen categorie en worden niet meegenomen.</div>` : ''}
-      ${!L.pub ? `<div class="melding">Er is geen gepubliceerde lijst geladen; het bestand bevat dan alleen de nieuwe regels. Laad bovenaan de meest recente lijst om die aan te vullen.</div>` : ''}
+      ${!L.pub ? `<div class="melding waarsch"><b>Laad eerst de gepubliceerde lijst</b> (bovenaan, de huidige tabel in OA). Zonder die lijst kan de app niet zien welke regels OA al heeft; die komen dan dubbel in OA.</div>` : ''}
       ${afgPub.length ? `<div class="melding waarsch"><b>${afgPub.length} regel(s) uit de gepubliceerde lijst zijn nu door het panel afgewezen:</b><ul>${afgPub.map(b => `<li class="mono">${esc(b.velden.join(';'))}</li>`).join('')}</ul>
-        <label style="display:flex;gap:6px;align-items:center;margin-top:6px"><input type="checkbox" id="chkVerwijder" ${C.coordinatie.verwijderAfgewezen ? 'checked' : ''}> Verwijder deze regels uit het laadbestand</label></div>` : ''}
-      <button class="knop primair" id="btnCsv" ${L.rijen.length ? '' : 'disabled'}>Laadbestand maken…</button>
-      ${L.rijen.length ? '' : '<span style="color:var(--g2);margin-left:8px">Er zijn nog geen akkoord-regels.</span>'}
+        <p style="margin:6px 0 0">OA kan geen regels verwijderen: deze adviezen <b>blijven in OA staan</b>. Ze staan daarom ook in de volledige lijst.</p></div>` : ''}
+      <button class="knop primair" id="btnCsv" ${L.laad.length ? '' : 'disabled'}>Laadbestand maken…</button>
+      ${L.laad.length ? '' : `<span style="color:var(--g2);margin-left:8px">${L.rijen.length ? 'Er zijn geen nieuwe akkoord-regels.' : 'Er zijn nog geen akkoord-regels.'}</span>`}
     </div>
-    <div class="blok"><h2>Logboek (Excel)</h2><p>Het volledige consensusoverzicht: per regel alle oordelen en toelichtingen, de consensus, het besluit na overleg en of de regel in het laadbestand staat. Plus de voorstellen.</p>
+    ${L.pub ? `<div class="blok"><h2>Volledige lijst (voor de volgende ronde)</h2><p>De gepubliceerde lijst plus de nieuwe regels: zo ziet de tabel in OA eruit nadat het laadbestand is toegevoegd. <b>Niet naar OA sturen.</b> Bewaar dit bestand en laad het in de volgende ronde bovenaan als gepubliceerde lijst.</p>
+      <button class="knop" id="btnVolledig">Volledige lijst maken…</button></div>` : ''}
+    <div class="blok"><h2>Logboek (Excel)</h2><p>Het volledige consensusoverzicht: per regel alle oordelen en toelichtingen, de consensus, het besluit na overleg en of de regel in het laadbestand staat. Plus de voorstellen, het laadbestand en de volledige lijst.</p>
       <button class="knop" id="btnLog">Logboek exporteren</button></div>
     <div class="blok"><h2>Back-up (extra kopie)</h2><p>Alles staat al in de database; een back-up is <b>niet verplicht</b>. Het is een extra kopie van alle oordelen, voorstellen en besluiten, voor als er iets misgaat. Supabase maakt op het gratis plan zelf geen back-ups die je kunt downloaden. Advies: maak er een na elk paneloverleg en vóór elke publicatie.</p>
       <button class="knop" id="btnBackup2">Back-up downloaden</button></div>`;
-  const chk = $('#chkVerwijder'); if (chk) chk.addEventListener('change', () => { C.coordinatie.verwijderAfgewezen = chk.checked; bewaarCoordinatie(); renderCExport(U()); });
-  $('#btnCsv').addEventListener('click', () => toonCsvSamenvatting());
+  if ($('#btnVolledig')) $('#btnVolledig').addEventListener('click', () => toonCsvSamenvatting('volledig'));
+  $('#btnCsv').addEventListener('click', () => toonCsvSamenvatting('laad'));
   $('#btnLog').addEventListener('click', exporteerLogboek);
   $('#btnBackup2').addEventListener('click', exporteerBackup);
 }
 
-async function toonCsvSamenvatting() {
-  const u = U(), L = maakLaadbestand(u);
+async function toonCsvSamenvatting(soort) {
+  const u = U(), L = maakLaadbestand(u), volledig = soort === 'volledig';
+  const rijen = volledig ? L.rijen : L.laad;
   let csv;
-  try { csv = naarOaCsv(L.rijen); } catch (e) { return meld('Laadbestand niet gemaakt', `<pre class="voorbeeld">${esc(e.message)}</pre>`); }
-  const naam = `alternatieve-prk-regels-${stempel()}.csv`;
+  try { csv = naarOaCsv(rijen); } catch (e) { return meld(volledig ? 'Volledige lijst niet gemaakt' : 'Laadbestand niet gemaakt', `<pre class="voorbeeld">${esc(e.message)}</pre>`); }
+  const naam = volledig ? `alternatieve-prk-regels-volledig-${stempel()}.csv` : `alternatieve-prk-regels-${stempel()}.csv`;
   const regels = csv.split('\r\n');
-  const html = `<p>Bestandsnaam: <b>${esc(naam)}</b></p>
-    <table class="samenv">
-      ${L.pub ? `<tr><td>Bestaande regels (${esc(L.pub.bestand)})</td><td>${L.st.bestaand}</td></tr>` : ''}
-      ${L.pub && L.st.bestaandDubbel ? `<tr><td>&nbsp;&nbsp;waarvan dubbel in de bestaande lijst (eenmaal behouden)</td><td>${L.st.bestaandDubbel}</td></tr>` : ''}
-      ${L.pub && L.st.verwijderd ? `<tr><td>&nbsp;&nbsp;waarvan verwijderd (nu afgewezen)</td><td>−${L.st.verwijderd}</td></tr>` : ''}
-      <tr><td>Nieuwe akkoord-regels</td><td>${L.st.nieuw}</td></tr>
-      <tr><td>&nbsp;&nbsp;waarvan overgeslagen dubbelingen (combinatie AdviesPrk + AlternatiefPrk staat er al)</td><td>${L.st.dubbel}</td></tr>
-      <tr><td>&nbsp;&nbsp;waarvan toegevoegd</td><td>${L.st.toegevoegd}</td></tr>
-      <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.st.totaal}</td></tr>
-    </table>
-    <p>Voorbeeld van de eerste regels:</p><pre class="voorbeeld">${esc(regels.slice(0, 12).join('\n'))}${L.rijen.length > 11 ? '\n…' : ''}</pre>`;
-  if (!await modal('Samenvatting laadbestand', html, [{tekst: 'Annuleren', waarde: false}, {tekst: 'Opslaan', waarde: true, primair: true}])) return;
+  const tabel = volledig ? `
+      <tr><td>Bestaande regels (${esc(L.pub.bestand)})</td><td>${L.st.bestaand}</td></tr>
+      ${L.st.bestaandDubbel ? `<tr><td>&nbsp;&nbsp;waarvan dubbel in de bestaande lijst (eenmaal behouden)</td><td>−${L.st.bestaandDubbel}</td></tr>` : ''}
+      <tr><td>Nieuwe regels (het laadbestand)</td><td>${L.laad.length}</td></tr>
+      <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.st.totaal}</td></tr>` : `
+      <tr><td>Akkoord-regels en aangenomen voorstellen</td><td>${L.st.nieuw}</td></tr>
+      ${L.pub ? `<tr><td>&nbsp;&nbsp;waarvan al in ${esc(L.pub.bestand)} (overgeslagen)</td><td>−${L.st.dubbel}</td></tr>` : ''}
+      <tr class="totaal"><td>Regels in het bestand (zonder kopregel)</td><td>${L.laad.length}</td></tr>`;
+  const uitleg = volledig ? '<p>Dit bestand is <b>niet</b> voor OA. Bewaar het en laad het in de volgende ronde als gepubliceerde lijst.</p>'
+    : `<p>OA voegt deze regels toe aan de bestaande tabel. <b>OA kan regels daarna niet meer verwijderen:</b> controleer het bestand goed voordat je het verstuurt.${L.pub ? '' : ' <b>Let op:</b> er is geen gepubliceerde lijst geladen, dus regels die OA al heeft, staan hier ook in.'}</p>`;
+  const html = `<p>Bestandsnaam: <b>${esc(naam)}</b></p>${uitleg}
+    <table class="samenv">${tabel}</table>
+    <p>Voorbeeld van de eerste regels:</p><pre class="voorbeeld">${esc(regels.slice(0, 12).join('\n'))}${rijen.length > 11 ? '\n…' : ''}</pre>`;
+  if (!await modal(volledig ? 'Samenvatting volledige lijst' : 'Samenvatting laadbestand', html, [{tekst: 'Annuleren', waarde: false}, {tekst: 'Opslaan', waarde: true, primair: true}])) return;
   download(naam, new Blob([new TextEncoder().encode(csv)], {type: 'text/csv'}));
-  toast(`${naam} opgeslagen (${L.st.totaal} regels).`, 'ok');
+  toast(`${naam} opgeslagen (${rijen.length} regels).`, 'ok');
 }
 
 function exporteerLogboek() {
   if (typeof XLSX === 'undefined') return meld('Excel niet beschikbaar', '<p>SheetJS is niet geladen.</p>');
   const u = U(), L = maakLaadbestand(u);
-  const inLaad = new Set(L.rijen.map(r => prkNorm(r.velden[0]) + '|' + prkNorm(r.velden[2])));
+  const sl = (a, b) => prkNorm(a) + '|' + prkNorm(b);
+  const inLaad = new Set(L.laad.map(r => sl(r.velden[0], r.velden[2]))), inVolledig = new Set(L.rijen.map(r => sl(r.velden[0], r.velden[2])));
+  const laadStatus = (a, b) => inLaad.has(sl(a, b)) ? 'ja' : inVolledig.has(sl(a, b)) ? 'al gepubliceerd' : 'nee';
   const reg = [['Prio', 'PRK', 'Stofnaam tekort', 'Voorraadklasse', 'Volgorde', 'Niveau', 'Categorie', 'PRK alternatief', 'Stofnaam alternatief', 'Voorbeeldartikel alternatief', 'Signaal', ...C.panel.flatMap(p => ['Oordeel ' + p.naam, 'Toelichting ' + p.naam]), 'Consensus', 'Reden', 'Afwijkend oordeel', 'Besluit na overleg', 'Notitie', 'Eindstatus', 'In laadbestand']];
   const volg = new Map(BRON.tekorten.map((t, i) => [t.prk, i]));
   const rr = u.regels.slice().sort((a, b) => volg.get(a.r.prk) - volg.get(b.r.prk) || a.r.volgorde - b.r.volgorde);
@@ -595,20 +621,21 @@ function exporteerLogboek() {
     const r = x.r;
     reg.push([isNaN(r.prio) ? '' : r.prio, prkUit(r.prk), r.stofT, r.voorraadklasse, isNaN(r.volgorde) ? '' : r.volgorde, r.niveau, r.categorie, prkUit(r.prkAlt), r.stofA, r.voorbeeldA, r.signaal,
       ...x.per.flatMap(p => [p.o ? OORDEEL_LABEL[p.o] : '', p.t]), statusLabel(x.cons, ''), x.reden, x.tegenstem ? 'ja' : '',
-      x.besluit && x.besluit.b ? (x.besluit.b === 'akkoord' ? 'Akkoord' : 'Afgewezen') : '', x.besluit ? x.besluit.notitie || '' : '', statusLabel(x.eind, x.cons), inLaad.has(prkNorm(r.prk) + '|' + prkNorm(r.prkAlt)) ? 'ja' : 'nee']);
+      x.besluit && x.besluit.b ? (x.besluit.b === 'akkoord' ? 'Akkoord' : 'Afgewezen') : '', x.besluit ? x.besluit.notitie || '' : '', statusLabel(x.eind, x.cons), laadStatus(r.prk, r.prkAlt)]);
   }
   const vs = [['PRK tekort', 'Stofnaam tekort', 'PRK voorstel', 'Generiek', 'Voorbeeldartikel', 'Soort', ...C.panel.flatMap(p => ['Categorie ' + voornaam(p.naam), 'Positie ' + voornaam(p.naam), 'Toelichting ' + voornaam(p.naam)]), 'Besluit', 'Categorie (besluit)', 'Positie (besluit)', 'Notitie', 'In laadbestand']];
   for (const v of u.voorstellen) {
     const b = v.besluit || {};
     vs.push([prkUit(v.tekortPrk), v.tekortNaam, prkUit(v.prk), v.generiek, v.voorbeeld, v.label, ...C.panel.flatMap(p => { const x = v.per[p.email]; return x ? [x.categorie, x.positie, x.toelichting] : ['', '', '']; }),
-      b.b === 'akkoord' ? 'Aangenomen' : b.b === 'afgewezen' ? 'Afgewezen' : 'Open', b.categorie || '', b.positie || '', b.notitie || '', inLaad.has(prkNorm(v.tekortPrk) + '|' + prkNorm(v.prk)) ? 'ja' : 'nee']);
+      b.b === 'akkoord' ? 'Aangenomen' : b.b === 'afgewezen' ? 'Afgewezen' : 'Open', b.categorie || '', b.positie || '', b.notitie || '', laadStatus(v.tekortPrk, v.prk)]);
   }
-  const laad = [OA_KOP.concat(['Herkomst']), ...L.rijen.map(r => r.velden.concat([r.herkomst]))];
+  const laad = [OA_KOP, ...L.laad.map(r => r.velden)];
+  const volledig = [OA_KOP.concat(['Herkomst']), ...L.rijen.map(r => r.velden.concat([r.herkomst]))];
   const info = [['Datum', leesbareDatum(new Date().toISOString())], ['Bronbestand', BRON.bestand], ['Vingerafdruk bron', BRON.vingerafdruk],
-    ...C.panel.map(p => ['Beoordeling ' + p.naam, `${aantalBeoordeeldDoor(p.email)} van ${BRON.regels.length} regels beoordeeld`]),
+    ...C.panel.map(p => ['Beoordeling ' + p.naam, `${aantalBeoordeeldDoor(p.email)} van ${nTeBeoordelen()} regels beoordeeld (${BRON.regels.length - nTeBeoordelen()} regels staan al in OA en worden niet beoordeeld)`]),
     ['Gepubliceerde lijst', C.coordinatie.gepubliceerd ? C.coordinatie.gepubliceerd.bestand : 'niet geladen'], [],
     ['Consensusregels', 'Minimaal twee apothekers moeten het eens zijn met het eindoordeel. Minimaal twee keer Akkoord = Akkoord; minimaal twee keer Niet akkoord = Afgewezen; wel minimaal twee oordelen maar geen twee gelijke (of Bespreken) = Bespreken; minder dan twee oordelen = Onvolledig. Bij Bespreken legt de coördinator na het paneloverleg het eindbesluit vast.']];
-  download(`Logboek_consensus_${stempel()}.xlsx`, maakWerkmap([['Consensus', reg, [6, 9, 36, 11, 7, 22, 30, 10, 36, 44, 24, ...C.panel.flatMap(() => [13, 40]), 12, 34, 10, 14, 30, 20, 12]], ['Voorstellen', vs, [10, 36, 10, 36, 44, 34, ...C.panel.flatMap(() => [28, 8, 40]), 12, 28, 8, 30, 12]], ['Laadbestand', laad, [10, 40, 12, 40, 34, 22]], ['Info', info, [26, 100]]]));
+  download(`Logboek_consensus_${stempel()}.xlsx`, maakWerkmap([['Consensus', reg, [6, 9, 36, 11, 7, 22, 30, 10, 36, 44, 24, ...C.panel.flatMap(() => [13, 40]), 12, 34, 10, 14, 30, 20, 15]], ['Voorstellen', vs, [10, 36, 10, 36, 44, 34, ...C.panel.flatMap(() => [28, 8, 40]), 12, 28, 8, 30, 15]], ['Laadbestand', laad, [10, 40, 12, 40, 34]], ...(L.pub ? [['Volledige lijst', volledig, [10, 40, 12, 40, 34, 12]]] : []), ['Info', info, [26, 100]]]));
 }
 
 
@@ -646,7 +673,7 @@ function renderBeoordelaar() {
 }
 
 /* ---------- Stap voor stap: één tekort per scherm ---------- */
-const tekortOpen = t => t.keys.some(k => !geldigOordeel(WERK.oordelen[k]));
+const tekortOpen = t => teKeys(t).some(k => !geldigOordeel(WERK.oordelen[k]));
 function eersteOpenStap(vanaf = 0) {
   const i = BRON.tekorten.findIndex((t, j) => j >= vanaf && tekortOpen(t));
   return i;
@@ -698,7 +725,7 @@ function renderStapInhoud() {
       ${ov.uitgesloten ? `<div class="ind let"><b>Bewust niet voorgesteld:</b> ${esc(ov.uitgesloten)}</div>` : ''}
       <details class="meer"><summary>Meer gegevens</summary>${htmlTekortInfo(t.prk, t)}</details>
     </div>
-    <p class="stap-vraag">Is dit een goed alternatief? Kies per alternatief.</p>
+    <p class="stap-vraag">${teKeys(t).length ? (teKeys(t).length < t.keys.length ? 'Is dit een goed alternatief? Kies per nieuw alternatief. Wat al in OA staat, zie je ter informatie.' : 'Is dit een goed alternatief? Kies per alternatief.') : 'Alle alternatieven bij dit tekort staan al in OA; je hoeft hier niets te beoordelen. Je kunt wel zelf een ander alternatief voorstellen.'}</p>
     <div class="regels">${t.keys.map(k => htmlRegel(BRON.regelMap.get(k))).join('')}</div>
     ${htmlVoorstellenBlok(t.prk)}
   </section>`;
@@ -706,11 +733,11 @@ function renderStapInhoud() {
   updateStapBalk();
 }
 function htmlStapEinde() {
-  const open = BRON.regels.filter(r => !geldigOordeel(WERK.oordelen[r.key])).length;
+  const open = teBeoordelen(BRON).filter(r => !geldigOordeel(WERK.oordelen[r.key])).length;
   const nT = BRON.tekorten.filter(tekortOpen).length;
   const geen = BRON.geenAlt.length ? `<p class="klein">Optioneel: bij <a href="#" data-actie="naarGeenAlt">${BRON.geenAlt.length} tekorten zonder alternatief</a> kun je zelf een alternatief voorstellen.</p>` : '';
   if (!open) return `<section class="stap-einde"><div class="vink" aria-hidden="true">✓</div><h2>Klaar, dank je wel!</h2>
-    <p>Je hebt alle ${BRON.regels.length} alternatieven beoordeeld. Alles is opgeslagen; je hoeft niets op te sturen. Tot het panelbesluit kun je je oordelen nog aanpassen.</p>
+    <p>Je hebt alle ${nTeBeoordelen()} alternatieven beoordeeld. Alles is opgeslagen; je hoeft niets op te sturen. Tot het panelbesluit kun je je oordelen nog aanpassen.</p>
     ${geen}<p><button type="button" class="knop groot" data-actie="stapBegin">Mijn oordelen nog eens bekijken</button></p></section>`;
   return `<section class="stap-einde"><h2>Je bent bij het einde van de lijst</h2>
     <p>Er ${open === 1 ? 'is' : 'zijn'} nog <b>${open}</b> alternatie${open === 1 ? 'f' : 'ven'} open bij ${nT} tekort${nT === 1 ? '' : 'en'} die je hebt overgeslagen.</p>
@@ -722,7 +749,7 @@ function updateStapBalk() {
   $('#stapNr').textContent = STAP_EINDE ? '' : `Tekort ${STAP + 1} van ${BRON.tekorten.length}`;
   if (!t || STAP_EINDE) return;
   const [n, tot] = tekortVoortgangTekst(t);
-  st.textContent = n === tot ? `Alle ${tot} alternatieven beoordeeld` : `${n} van ${tot} beoordeeld`;
+  st.textContent = !tot ? 'Niets te beoordelen (staat al in OA)' : n === tot ? `Alle ${tot} alternatieven beoordeeld` : `${n} van ${tot} beoordeeld`;
   const knop = $('#btnVolgende');
   knop.textContent = n === tot ? 'Volgende tekort' : 'Overslaan, later doen';
   knop.classList.toggle('primair', n === tot);
@@ -966,7 +993,7 @@ function renderBeoordelaarKop() {
   $('#btnExpXlsx').addEventListener('click', exporteerBeoordelingXlsx);
   $('#btnImp').addEventListener('click', importeerBeoordeling);
 }
-function aantalBeoordeeld() { return BRON.regels.filter(r => geldigOordeel(WERK.oordelen[r.key])).length; }
+function aantalBeoordeeld() { return teBeoordelen(BRON).filter(r => geldigOordeel(WERK.oordelen[r.key])).length; }
 function zetOordeel(key, o) {
   const oo = WERK.oordelen[key] || {o: null, t: ''};
   oo.o = oo.o === o ? null : o; // nogmaals klikken = wissen
@@ -1143,7 +1170,7 @@ document.addEventListener('focusout', () => {
   setTimeout(() => { if (wachtOpBlur && !typtInLijst()) { wachtOpBlur = false; renderCoordinatorInhoud(); } }, 300);
 });
 function U() { return berekenUitkomsten(BRON, C.panel, C.werkPer, C.besluiten.regels, C.besluiten.voorstellen); }
-function aantalBeoordeeldDoor(email) { const w = C.werkPer[email]; return w ? BRON.regels.filter(r => geldigOordeel(w.oordelen[r.key])).length : 0; }
+function aantalBeoordeeldDoor(email) { const w = C.werkPer[email]; return w ? teBeoordelen(BRON).filter(r => geldigOordeel(w.oordelen[r.key])).length : 0; }
 function renderCoordinator() {
   renderKop(`<span class="bewaard" id="liveStatus"></span><button class="knop" id="btnVernieuw">Vernieuwen</button><button class="knop" id="btnBackup" title="Extra kopie van alle oordelen en besluiten, voor de zekerheid. Niet verplicht: alles staat al in de database.">Back-up</button>`);
   $('#btnVernieuw').addEventListener('click', () => vernieuw());
@@ -1167,13 +1194,13 @@ function achtersteBeoordelaar() {
   const n = C.panel.map(x => ({email: x.email, n: aantalBeoordeeldDoor(x.email)}));
   if (n.length < 2) return null;
   const min = Math.min(...n.map(x => x.n)), laagst = n.filter(x => x.n === min);
-  return min < BRON.regels.length && laagst.length === 1 ? laagst[0].email : null;
+  return min < nTeBeoordelen() && laagst.length === 1 ? laagst[0].email : null;
 }
 function herinneringMail(x, n) {
-  const open = BRON.regels.length - n, link = location.origin + location.pathname;
+  const open = nTeBeoordelen() - n, link = location.origin + location.pathname;
   const tekst = `Hoi ${voornaam(x.naam)},
 
-${n ? `Je hebt ${n} van de ${BRON.regels.length} alternatieven beoordeeld; er staan er nog ${open} open.` : `Je hebt nog geen alternatieven beoordeeld; er staan er ${open} klaar.`} Zou je de beoordeling willen afronden? Je gaat vanzelf verder waar je gebleven was:
+${n ? `Je hebt ${n} van de ${nTeBeoordelen()} alternatieven beoordeeld; er staan er nog ${open} open.` : `Je hebt nog geen alternatieven beoordeeld; er staan er ${open} klaar.`} Zou je de beoordeling willen afronden? Je gaat vanzelf verder waar je gebleven was:
 ${link}
 
 Alvast bedankt!
@@ -1186,14 +1213,14 @@ function renderSlots() {
   const p = C.coordinatie.gepubliceerd, achterste = achtersteBeoordelaar();
   const laatste = email => { const w = C.werkPer[email]; if (!w) return ''; const t = Object.values(w.oordelen).map(o => o.tijd).filter(Boolean).sort().pop(); return t ? 'laatst ' + leesbareDatum(t) : ''; };
   $('#slots').innerHTML = `
-    <div class="slot"><h3>Lijst</h3><div class="status ok">${esc(BRON.bestand)}</div><small>${BRON.regels.length} regels · ${BRON.tekorten.length} tekorten · ${BRON.geenAlt.length} zonder alternatief</small></div>
-    ${C.panel.map(x => { const n = aantalBeoordeeldDoor(x.email), w = C.werkPer[x.email], klaar = n === BRON.regels.length, achter = x.email === achterste; return `<div class="slot${achter ? ' achter' : ''}"><h3>${esc(x.naam)}</h3>
-      <div class="status ${klaar ? 'ok' : n ? '' : 'leeg'}">${klaar ? '✓ ' : ''}${n} van ${BRON.regels.length} beoordeeld</div>
-      <div class="vg-bar" style="margin:4px 0"><div style="width:${100 * n / BRON.regels.length}%"></div></div>
+    <div class="slot"><h3>Lijst</h3><div class="status ok">${esc(BRON.bestand)}</div><small>${nTeBeoordelen()} te beoordelen · ${BRON.regels.length - nTeBeoordelen()} al in OA · ${BRON.tekorten.length} tekorten · ${BRON.geenAlt.length} zonder alternatief</small></div>
+    ${C.panel.map(x => { const n = aantalBeoordeeldDoor(x.email), w = C.werkPer[x.email], klaar = n === nTeBeoordelen(), achter = x.email === achterste; return `<div class="slot${achter ? ' achter' : ''}"><h3>${esc(x.naam)}</h3>
+      <div class="status ${klaar ? 'ok' : n ? '' : 'leeg'}">${klaar ? '✓ ' : ''}${n} van ${nTeBeoordelen()} beoordeeld</div>
+      <div class="vg-bar" style="margin:4px 0"><div style="width:${100 * n / Math.max(1, nTeBeoordelen())}%"></div></div>
       <small>${w ? w.voorstellen.length : 0} eigen voorstel(len)${laatste(x.email) ? ' · ' + esc(laatste(x.email)) : ''}</small>
       ${achter ? '<div class="achter-label">Loopt het verst achter</div>' : ''}
       ${!klaar && x.email !== GEBRUIKER.email ? `<div class="knoppen"><a class="knop klein" href="${esc(herinneringMail(x, n))}" title="Opent een kant-en-klare mail in je eigen mailprogramma; je verstuurt hem zelf">✉ Herinnering mailen</a></div>` : ''}</div>`; }).join('')}
-    <div class="slot"><h3>Gepubliceerde lijst (optioneel)</h3>${p ? `<div class="status ok">✓ ${esc(p.bestand)}</div><small>${p.rijen.length} bestaande regels</small>` : `<div class="status leeg">Niet geladen</div><small>bijv. alternatieve-prk-regels-20260916.csv</small>`}
+    <div class="slot"><h3>Gepubliceerde lijst</h3>${p ? `<div class="status ok">✓ ${esc(p.bestand)}</div><small>${p.rijen.length} bestaande regels</small>` : `<div class="status leeg">Niet geladen</div><small>de huidige tabel in OA, bijv. alternatieve-prk-regels-20260916.csv; nodig om dubbele regels in OA te voorkomen</small>`}
       <div class="knoppen"><button class="knop klein" id="btnLaadPub">${p ? 'Vervangen…' : 'Lijst laden…'}</button>${p ? '<button class="knop klein gevaar" id="btnPubWeg">Verwijderen</button>' : ''}</div></div>`;
   $('#btnLaadPub').addEventListener('click', laadGepubliceerd);
   if ($('#btnPubWeg')) $('#btnPubWeg').addEventListener('click', async () => {

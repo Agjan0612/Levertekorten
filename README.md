@@ -30,6 +30,7 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
 1. Open de link en vul je e-mailadres in. Je krijgt een e-mail (dat kan een paar minuten duren). Klik op de knop in de mail en daarna in de app op **Inloggen**. Werkt de knop niet, of meldt hij "verlopen"? Typ dan de **inlogcode** uit dezelfde mail in de app. De app onthoudt je daarna in die browser.
 2. Je ziet **steeds één tekort** met de voorgestelde alternatieven, gesorteerd op Prio. De app begint bij het eerste tekort dat je nog niet (helemaal) hebt beoordeeld.
    - Per alternatief kies je **Akkoord**, **Niet akkoord** of **Bespreken**. Een toelichting is altijd optioneel: bij *Niet akkoord* en *Bespreken* staat het veld direct open, bij *Akkoord* klik je op *+ Toelichting toevoegen*.
+   - Alternatieven met **✓ Staat al in OA** zijn al gepubliceerd; die hoef je niet te beoordelen (ze staan erbij ter informatie).
    - Klik nogmaals op een gekozen oordeel om het te wissen.
    - Klik onderaan op **Volgende tekort**. Wil je een tekort later doen, dan heet die knop **Overslaan, later doen**. Met **Vorige** ga je terug.
    - Alles wordt direct opgeslagen; rechtsboven staat "✓ Opgeslagen". Je kunt altijd stoppen en later verdergaan.
@@ -54,12 +55,16 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
 - **Overzicht:** de voortgang per apotheker en tellingen per uitkomst. Wie het verst achterloopt, krijgt een rode rand. Met **✉ Herinnering mailen** opent een kant-en-klare mail in je eigen mailprogramma; die verstuur je zelf.
 - **Bespreken:** de regels waar geen eindoordeel uit kwam, met alle oordelen en toelichtingen naast elkaar. Leg hier het eindbesluit vast (Akkoord of Afgewezen, met een notitie). Terugdraaien kan met **Besluit wissen**.
 - **Voorstellen:** de eigen voorstellen van de apothekers. Hebben minimaal twee apothekers hetzelfde PRK voorgesteld, dan heet dat *gezamenlijk voorstel*. Een voorstel gaat alleen in het laadbestand als je het aanneemt, met categorie en positie.
-- **Export → Laadbestand maken…:** het OA-laadbestand `alternatieve-prk-regels-<jjjjmmdd>.csv`.
+- **Regels die al in OA staan** (niveau "Al gepubliceerd (…)" in de lijst) beoordeelt het panel niet: OA kan geen adviezen verwijderen, dus een oordeel verandert er niets aan. De beoordelaars zien ze ter informatie ("✓ Staat al in OA", zonder knoppen) en beoordelen alleen de nieuwe alternatieven bij zo'n tekort. Ze tellen niet mee in de voortgang en hebben in het coördinatorscherm de status *Staat al in OA*.
+- **Gepubliceerde lijst** (tegel bovenaan): laad hier eerst de laatst gepubliceerde lijst, de huidige tabel in OA (bijvoorbeeld `alternatieve-prk-regels-20260916.csv`). OA **voegt** een laadbestand **toe** aan die tabel; zonder deze lijst kan de app niet zien welke regels OA al heeft.
+- **Export → Laadbestand maken…:** het OA-laadbestand `alternatieve-prk-regels-<jjjjmmdd>.csv`. Dit stuur je naar OA.
   - Precies de kolommen `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie`.
   - Puntkomma als scheidingsteken, UTF-8 zonder BOM, regeleinde CRLF.
-  - Alleen regels met eindstatus Akkoord.
-  - Gesorteerd per tekort, daarbinnen in cascadevolgorde.
-  - Laad je eerst de laatst gepubliceerde lijst in, dan bevat het bestand die lijst plus de nieuwe regels, zonder dubbelingen. Je ziet eerst een samenvatting.
+  - Alleen **nieuwe** regels: eindstatus Akkoord en nog niet in de gepubliceerde lijst.
+  - Gesorteerd per tekort, daarbinnen in cascadevolgorde. Je ziet eerst een samenvatting.
+  - OA kan regels **niet verwijderen**: wat eenmaal in OA staat, blijft staan. Controleer het bestand dus goed voordat je het verstuurt.
+- **Export → Volledige lijst maken…:** de gepubliceerde lijst plus de nieuwe regels (`alternatieve-prk-regels-volledig-<jjjjmmdd>.csv`), zoals de tabel in OA er daarna uitziet. Niet naar OA sturen: bewaar hem en laad hem in de volgende ronde als gepubliceerde lijst.
+- **Afgewezen gepubliceerde regels:** wijst het panel een advies af dat al in OA staat, dan blijft het daar toch staan (OA kan niets verwijderen, een laadbestand voegt alleen toe). De app toont ze apart; ze blijven ook in de volledige lijst.
 - **Logboek exporteren:** Excel met alle oordelen, uitkomsten en besluiten.
 - **Back-up:** download van alle oordelen en besluiten (JSON). Niet verplicht (alles staat al in de database), maar wel een goede extra kopie: maak er een na elk paneloverleg en vóór elke publicatie.
 

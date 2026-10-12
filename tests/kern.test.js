@@ -84,3 +84,18 @@ test('data/ is bijgewerkt: komt overeen met de Excel-bestanden in invoer/', () =
   assert.equal(bron.vingerafdruk, opnieuw.vingerafdruk, 'draai: node tools/bouw-data.js');
   assert.equal(bron.regels.length, 299);
 });
+
+test('regels die al in OA staan: niet beoordelen, niet onvolledig, niet in het laadbestand', () => {
+  const inOA = bron.regels.filter(Kern.alInOA);
+  assert.ok(inOA.length > 0 && Kern.teBeoordelen(bron).length === bron.regels.length - inOA.length);
+  const panel = [{email: 'a', naam: 'A'}, {email: 'b', naam: 'B'}];
+  const oordelen = Object.fromEntries(bron.regels.map(r => [r.key, {o: 'akkoord'}]));
+  const werkPer = {a: {oordelen, voorstellen: []}, b: {oordelen, voorstellen: []}};
+  const u = Kern.berekenUitkomsten(bron, panel, werkPer, {}, {});
+  const x = u.regels.find(y => y.r.key === inOA[0].key);
+  assert.equal(x.eind, 'inoa'); assert.equal(Kern.statusLabel(x.eind, x.cons), 'Staat al in OA');
+  const nieuw = Kern.bouwNieuweRegels(bron, u).regels;
+  assert.ok(!nieuw.some(n => n.adviesPrk + '|' + n.altPrk === inOA[0].key));
+  const json = Kern.beoordelingNaarJson({beoordelaar: 'A', oordelen, voorstellen: []}, bron);
+  assert.equal(json.aantalRegels, Kern.teBeoordelen(bron).length); assert.equal(json.aantalBeoordeeld, json.aantalRegels);
+});

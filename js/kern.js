@@ -101,6 +101,11 @@ function vingerafdruk(str) { return cyrb53(str, 1).toString(16).padStart(14, '0'
 
 function klasseCls(v) { const s = normKop(v); return s.startsWith('0 dag') ? 'k0' : s.startsWith('0-1') ? 'k1' : 'k2'; }
 
+// Regel met niveau "Al gepubliceerd (…)": staat al in OA. OA kan niets verwijderen en het laadbestand voegt alleen toe,
+// dus een oordeel verandert er niets aan. Het panel ziet zo'n regel als context, maar beoordeelt hem niet.
+function alInOA(r) { return normKop(r && r.niveau).startsWith('al gepubliceerd'); }
+function teBeoordelen(bron) { return bron.regels.filter(r => !alInOA(r)); }
+
 function nivCls(v) { const s = normKop(v); return s.startsWith('al gepubliceerd') ? 'gepubl' : s.startsWith('andere stof') ? 'andere' : ''; }
 
 const ONVEILIG_CSV = /[;\r\n"]/;
@@ -340,7 +345,7 @@ function beoordelingNaarJson(werk, bron) {
     app: APP, soort: 'beoordeling', formaatversie: FORMAAT,
     beoordelaar: werk.beoordelaar, datum: nu.toISOString(),
     bronbestand: bron.bestand, bronVingerafdruk: bron.vingerafdruk,
-    aantalRegels: bron.regels.length, aantalBeoordeeld: regels.filter(r => r.oordeel).length,
+    aantalRegels: teBeoordelen(bron).length, aantalBeoordeeld: teBeoordelen(bron).filter(r => geldigOordeel(werk.oordelen[r.key])).length,
     regels,
     voorstellen: werk.voorstellen.map(v => ({
       tekortPrk: prkUit(v.tekortPrk), tekortStofnaam: v.tekortNaam, prk: prkUit(v.prk), generiek: v.generiek,
@@ -409,7 +414,7 @@ function eindStatus(cons, besluit) {
 function statusLabel(eind, cons) {
   if (eind === 'akkoord') return cons === 'bespreken' ? 'Akkoord (na overleg)' : 'Akkoord';
   if (eind === 'afgewezen') return cons === 'bespreken' ? 'Afgewezen (na overleg)' : 'Afgewezen';
-  return {bespreken: 'Bespreken', onvolledig: 'Onvolledig'}[eind] || eind;
+  return {bespreken: 'Bespreken', onvolledig: 'Onvolledig', inoa: 'Staat al in OA'}[eind] || eind;
 }
 
 function bouwNieuweRegels(bron, U) {
@@ -546,6 +551,7 @@ function zoekZindex(zindex, q, max = 40) {
 function berekenUitkomsten(bron, panel, werkPer, besluiten, voorstelBesluiten, minEens = MIN_EENS) {
   werkPer = werkPer || {}; besluiten = besluiten || {}; voorstelBesluiten = voorstelBesluiten || {};
   const regels = bron.regels.map(r => {
+    if (alInOA(r)) return {r, per: panel.map(p => ({email: p.email, naam: p.naam, o: null, t: ''})), cons: 'inoa', reden: 'staat al in OA, niet beoordeeld', tegenstem: false, besluit: null, eind: 'inoa'};
     const per = panel.map(p => {
       const w = werkPer[p.email], oo = w && w.oordelen[r.key];
       return {email: p.email, naam: p.naam, o: geldigOordeel(oo) ? oo.o : null, t: (oo && oo.t) || ''};
@@ -593,7 +599,7 @@ function standaardVoorstelBesluit(v) {
 const Kern = {
   APP, FORMAAT, MIN_EENS, Fout, voornaam, zetXLSX,
   CATEGORIEEN, CAT_UITLEG, OORDEEL_LABEL, OA_KOP, MIP_MELDING, ONVEILIG_CSV, LABEL_NAAR_CODE,
-  normKop, tekst, prkStr, prkNorm, num, fmtNum, pad, stempel, leesbareDatum, prkSort, prkUit, vingerafdruk, klasseCls, nivCls,
+  alInOA, teBeoordelen, normKop, tekst, prkStr, prkNorm, num, fmtNum, pad, stempel, leesbareDatum, prkSort, prkUit, vingerafdruk, klasseCls, nivCls,
   isVersleuteld, parseBron, indexeerBron, bronNaarData, parseBronnen, parseZindex, zindexNaarData, zindexUitData, zoekZindex, vergelijkRoute,
   geldigOordeel, beoordelingNaarJson, parseBeoordeling, consensus, redenConsensus, eindStatus, statusLabel,
   berekenUitkomsten, standaardVoorstelBesluit, bouwNieuweRegels, samenvoegen, naarOaCsv, parseGepubliceerd

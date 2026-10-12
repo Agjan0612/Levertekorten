@@ -80,6 +80,8 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   console.log('Jan en Femke beoordelen los van elkaar');
   const bron = JSON.parse(fs.readFileSync(path.join(REPO, 'data/bron.json'), 'utf8'));
   const k = bron.tekorten.flatMap(t => t.keys); // regels in volgorde van de kaarten
+  const alInOA = key => /^al gepubliceerd/i.test(bron.regels.find(r => r.key === key).niveau.trim());
+  const N = bron.regels.filter(r => !alInOA(r.key)).length; // te beoordelen regels (wat al in OA staat, beoordeelt het panel niet)
   const jan = await tab('jan@test.nl'); await jan.waitForSelector('.kaart');
   ok((await jan.textContent('#kopRechts')).includes('Jan Test') && !(await jan.textContent('#kopRechts')).includes('Coördineren'), 'Jan ziet zijn naam, geen coördinatorknop');
   const geef = async (p, key, o, t) => { await p.click(`.regel[data-key="${key}"] button[data-o=${o}]`); if (t) await p.fill(`.regel[data-key="${key}"] textarea`, t); };
@@ -97,7 +99,10 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   ok(true, 'Jan: 6 oordelen en 1 voorstel opgeslagen');
 
   const femke = await tab('femke@test.nl'); await femke.waitForSelector('.kaart');
-  ok((await femke.textContent('#vgTekst')).startsWith('0 van 299'), 'Femke ziet niets van Jan (blind)');
+  ok((await femke.textContent('#vgTekst')).startsWith(`0 van ${N}`), 'Femke ziet niets van Jan (blind)');
+  const kOA = k.find(alInOA), oaRegel = `.regel.in-oa[data-oa="${kOA}"]`;
+  ok(N < bron.regels.length && (await femke.textContent(oaRegel)).includes('Staat al in OA') && !(await femke.$(`${oaRegel} button[data-o]`)) && !(await femke.$(`.regel[data-key="${kOA}"]`)),
+    'regel die al in OA staat: zichtbaar ter informatie, zonder oordeelknoppen, telt niet mee');
   for (const key of k.slice(0, 3)) await geef(femke, key, 'akkoord');
   await geef(femke, k[3], 'niet', 'liever niet');
   await geef(femke, k[4], 'bespreken');
@@ -115,12 +120,14 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   ok((await arnout.textContent('#kopRechts')).includes('Coördineren'), 'Arnout (beoordelaar én coördinator) kan wisselen');
   await arnout.click('.wissel button[data-view=coordineren]'); await arnout.waitForSelector('.slots .slot');
   const slots = await arnout.textContent('#slots');
-  ok(slots.includes('Jan Test') && slots.includes('6 van 299') && slots.includes('5 van 299') && slots.includes('0 van 299'), 'voortgang per apotheker zichtbaar');
+  ok(slots.includes('Jan Test') && slots.includes(`6 van ${N}`) && slots.includes(`5 van ${N}`) && slots.includes(`0 van ${N}`), 'voortgang per apotheker zichtbaar');
+  ok(await arnout.evaluate(key => window.LT.U().regels.find(y => y.r.key === key).eind === 'inoa', kOA) && (await arnout.textContent('#slots')).includes(`${N} te beoordelen`),
+    'coördinator: regel die al in OA staat heeft status "Staat al in OA", niet Onvolledig');
   const tegels = await arnout.$$eval('#slots .slot', els => els.map(e => ({tekst: e.textContent, achter: e.classList.contains('achter'), mail: (e.querySelector('a[href^="mailto:"]') || {}).href || ''})));
   const tegel = naam => tegels.find(t => t.tekst.includes(naam));
   ok(tegel('Arnout Test').achter && tegel('Arnout Test').tekst.includes('verst achter') && !tegel('Jan Test').achter && !tegel('Femke Test').achter, 'paneltegels: wie het verst achterloopt is gemarkeerd');
   const janMail = decodeURIComponent(tegel('Jan Test').mail);
-  ok(janMail.startsWith('mailto:jan@test.nl?') && janMail.includes('nog 293 open') && janMail.includes('Hoi Jan') && tegel('Femke Test').mail && !tegel('Arnout Test').mail, 'paneltegels: kant-en-klare herinneringsmail (niet aan jezelf)');
+  ok(janMail.startsWith('mailto:jan@test.nl?') && janMail.includes(`nog ${N - 6} open`) && janMail.includes('Hoi Jan') && tegel('Femke Test').mail && !tegel('Arnout Test').mail, 'paneltegels: kant-en-klare herinneringsmail (niet aan jezelf)');
   const cons = async () => arnout.evaluate(ks => { const u = window.LT.U(); return ks.map(x => u.regels.find(y => y.r.key === x)); }, k.slice(0, 6));
   let c = await cons();
   ok(c[0].cons === 'akkoord' && c[1].cons === 'akkoord' && c[2].cons === 'akkoord', 'Jan + Femke akkoord → Akkoord');
@@ -135,7 +142,7 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
 
   // Arnout als derde stem
   await arnout.click('.wissel button[data-view=beoordelen]'); await arnout.waitForSelector('.kaart');
-  ok((await arnout.textContent('#vgTekst')).startsWith('0 van 299'), 'Arnout ziet als beoordelaar alleen zijn eigen werk');
+  ok((await arnout.textContent('#vgTekst')).startsWith(`0 van ${N}`), 'Arnout ziet als beoordelaar alleen zijn eigen werk');
   await geef(arnout, k[3], 'akkoord'); await geef(arnout, k[4], 'akkoord');
   await arnout.waitForFunction(() => document.querySelector('#opslagStatus').textContent.includes('Opgeslagen'));
   await arnout.click('.wissel button[data-view=coordineren]'); await arnout.waitForSelector('.slots .slot');
@@ -178,6 +185,38 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
   const paren = new Set(regels.map(f => f[0] + '|' + f[2]));
   const verwacht = [k[0], k[1], k[2], k[3], k[4], k[6], `${tk}|${v[0].prk}`];
   ok(verwacht.every(x => paren.has(x)) && !paren.has(k[5]) && regels.length === verwacht.length, `CSV bevat precies de ${verwacht.length} akkoord-regels (incl. besluit en voorstel)`);
+  ok((await arnout.textContent('#cinhoud')).includes('Laad eerst de gepubliceerde lijst') && !(await arnout.$('#btnVolledig')), 'zonder gepubliceerde lijst: waarschuwing voor dubbele regels, geen volledige lijst');
+
+  // gepubliceerde lijst laden: OA voegt toe, dus het laadbestand bevat alleen de nieuwe regels
+  const pubPad = path.join(require('os').tmpdir(), 'alternatieve-prk-regels-test.csv');
+  const pubRegel = key => `${key.split('|')[0]};OUD TEKORT;${key.split('|')[1]};OUD ALTERNATIEF;AndereDosering`;
+  fs.writeFileSync(pubPad, ['AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie', pubRegel(k[0]), pubRegel(k[5]), '1;A;2;B;AndereStof', ''].join('\r\n'));
+  const [kies] = await Promise.all([arnout.waitForEvent('filechooser'), arnout.click('#btnLaadPub')]);
+  await kies.setFiles(pubPad);
+  await arnout.waitForFunction(() => (window.LT.C.coordinatie.gepubliceerd || {}).rijen);
+  await arnout.click('#ctabs button[data-tab=export]'); await arnout.waitForSelector('#btnVolledig');
+  const leesCsv = async knop => {
+    await arnout.click(knop); await arnout.waitForSelector('#modal .venster');
+    const [dl] = await Promise.all([arnout.waitForEvent('download'), arnout.click('#modal .acties button.primair')]);
+    const pad = path.join(require('os').tmpdir(), dl.suggestedFilename()); await dl.saveAs(pad);
+    return {naam: dl.suggestedFilename(), regels: fs.readFileSync(pad, 'utf8').split('\r\n').filter(Boolean).slice(1)};
+  };
+  const laad = await leesCsv('#btnCsv'), laadParen = laad.regels.map(l => l.split(';')).map(f => f[0] + '|' + f[2]);
+  ok(laad.naam.startsWith('alternatieve-prk-regels-2') && laad.regels.length === verwacht.length - 1 && !laadParen.includes(k[0]) && !laadParen.includes('1|2'),
+    'laadbestand met gepubliceerde lijst: alleen nieuwe regels (wat OA al heeft, gaat er niet nog eens in)');
+  const vol = await leesCsv('#btnVolledig');
+  ok(vol.naam.startsWith('alternatieve-prk-regels-volledig-') && vol.regels.length === 3 + verwacht.length - 1 && vol.regels.includes(pubRegel(k[0])) && vol.regels.includes(pubRegel(k[5])),
+    'volledige lijst: gepubliceerd + nieuw, bestaande regels letterlijk (ook de nu afgewezen regel)');
+  ok((await arnout.textContent('#cinhoud')).includes('blijven in OA staan') && !(await arnout.$('#btnTeVerwijderen')) && !(await arnout.$('#chkVerwijder')),
+    'afgewezen gepubliceerde regel: melding dat hij in OA blijft staan (OA kan niets verwijderen), geen verwijderknop of vinkje');
+  const [lg] = await Promise.all([arnout.waitForEvent('download'), arnout.click('#btnLog')]);
+  const XLSX = require(path.join(REPO, 'vendor/xlsx.full.min.js')), lgPad = path.join(require('os').tmpdir(), lg.suggestedFilename()); await lg.saveAs(lgPad);
+  const wb = XLSX.read(fs.readFileSync(lgPad)), logRegels = XLSX.utils.sheet_to_json(wb.Sheets.Consensus);
+  const inLaad = key => (logRegels.find(r => r.PRK + '|' + r['PRK alternatief'] === key) || {})['In laadbestand'];
+  ok(wb.SheetNames.includes('Volledige lijst') && XLSX.utils.sheet_to_json(wb.Sheets.Laadbestand).length === laad.regels.length && inLaad(k[0]) === 'al gepubliceerd' && inLaad(k[1]) === 'ja' && inLaad(k[5]) === 'al gepubliceerd',
+    'logboek: tabbladen Laadbestand (alleen nieuw) en Volledige lijst; "In laadbestand" zegt ja of al gepubliceerd');
+  await arnout.click('#btnPubWeg'); await arnout.click('#modal .acties button.gevaar, #modal .acties button.primair');
+  await arnout.waitForFunction(() => !window.LT.C.coordinatie.gepubliceerd);
 
   // Femke kan geen besluiten zien of maken
   const femkeBesluiten = await femke.evaluate(async () => (await Opslag.besluiten(LT.BRON.vingerafdruk)));
@@ -196,7 +235,7 @@ const BASIS = () => `http://127.0.0.1:${srv.address().port}/`;
 
   console.log('Herladen en uitloggen');
   await jan.reload(); await jan.waitForSelector('.kaart');
-  ok((await jan.textContent('#vgTekst')).startsWith('8 van 299') && await jan.evaluate(() => LT.WERK.voorstellen.length === 1), 'Jan: na herladen alles terug uit de database');
+  ok((await jan.textContent('#vgTekst')).startsWith(`8 van ${N}`) && await jan.evaluate(() => LT.WERK.voorstellen.length === 1), 'Jan: na herladen alles terug uit de database');
   ok((await jan.inputValue(`.regel[data-key="${k[5]}"] textarea`)) === 'sterkte past niet', 'toelichting bewaard');
   await jan.click('#btnUit'); await jan.waitForSelector('#frmLogin');
   ok(true, 'uitloggen brengt terug naar het inlogscherm');
