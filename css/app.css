@@ -194,6 +194,7 @@ textarea:focus,input:focus,select:focus{outline:2px solid var(--lichtblauw);outl
 .st.afgewezen{background:var(--terra);color:#fff}
 .st.bespreken{background:var(--lichtblauw);color:#fff}
 .st.onvolledig{background:var(--g3);color:var(--g1);border:1px solid var(--rand)}
+.st.inoa{background:var(--blauw-zacht);color:var(--blauw)}
 .oo{display:inline-block;border-radius:3px;padding:0 6px;font-size:12px;font-weight:bold}
 .oo.akkoord{color:var(--blauw);border:1px solid var(--blauw)}
 .oo.niet{color:var(--terra);border:1px solid var(--terra)}
@@ -328,3 +329,10 @@ table.samenv tr.totaal td{border-top:1px solid var(--rand);padding-top:6px}
   .stap-tekort h2{font-size:19px}
   .meer-menu .menu{right:auto;left:0}
 }
+
+/* Regel die al in OA staat: alleen ter informatie, geen oordeel nodig */
+.regel.in-oa{background:#f7f9fb;color:var(--g1)}
+.regel.in-oa .r-alt .naam{color:var(--g1)}
+.in-oa-label{display:inline-block;background:var(--blauw-zacht);color:var(--blauw);font-weight:bold;border-radius:4px;padding:3px 9px;font-size:13px}
+.in-oa-uitleg{font-size:12px;color:var(--g2);margin-top:4px}
+.stap .regel.in-oa{border-left-color:var(--blauw-zacht);background:#f7f9fb}

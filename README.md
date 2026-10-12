@@ -30,6 +30,7 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
 1. Open de link en vul je e-mailadres in. Je krijgt een e-mail (dat kan een paar minuten duren). Klik op de knop in de mail en daarna in de app op **Inloggen**. Werkt de knop niet, of meldt hij "verlopen"? Typ dan de **inlogcode** uit dezelfde mail in de app. De app onthoudt je daarna in die browser.
 2. Je ziet **steeds één tekort** met de voorgestelde alternatieven, gesorteerd op Prio. De app begint bij het eerste tekort dat je nog niet (helemaal) hebt beoordeeld.
    - Per alternatief kies je **Akkoord**, **Niet akkoord** of **Bespreken**. Een toelichting is altijd optioneel: bij *Niet akkoord* en *Bespreken* staat het veld direct open, bij *Akkoord* klik je op *+ Toelichting toevoegen*.
+   - Alternatieven met **✓ Staat al in OA** zijn al gepubliceerd; die hoef je niet te beoordelen (ze staan erbij ter informatie).
    - Klik nogmaals op een gekozen oordeel om het te wissen.
    - Klik onderaan op **Volgende tekort**. Wil je een tekort later doen, dan heet die knop **Overslaan, later doen**. Met **Vorige** ga je terug.
    - Alles wordt direct opgeslagen; rechtsboven staat "✓ Opgeslagen". Je kunt altijd stoppen en later verdergaan.
@@ -54,6 +55,7 @@ Uitgebreide handleidingen met schermafbeeldingen (Word en HTML) staan in [`handl
 - **Overzicht:** de voortgang per apotheker en tellingen per uitkomst. Wie het verst achterloopt, krijgt een rode rand. Met **✉ Herinnering mailen** opent een kant-en-klare mail in je eigen mailprogramma; die verstuur je zelf.
 - **Bespreken:** de regels waar geen eindoordeel uit kwam, met alle oordelen en toelichtingen naast elkaar. Leg hier het eindbesluit vast (Akkoord of Afgewezen, met een notitie). Terugdraaien kan met **Besluit wissen**.
 - **Voorstellen:** de eigen voorstellen van de apothekers. Hebben minimaal twee apothekers hetzelfde PRK voorgesteld, dan heet dat *gezamenlijk voorstel*. Een voorstel gaat alleen in het laadbestand als je het aanneemt, met categorie en positie.
+- **Regels die al in OA staan** (niveau "Al gepubliceerd (…)" in de lijst) beoordeelt het panel niet: OA kan geen adviezen verwijderen, dus een oordeel verandert er niets aan. De beoordelaars zien ze ter informatie ("✓ Staat al in OA", zonder knoppen) en beoordelen alleen de nieuwe alternatieven bij zo'n tekort. Ze tellen niet mee in de voortgang en hebben in het coördinatorscherm de status *Staat al in OA*.
 - **Gepubliceerde lijst** (tegel bovenaan): laad hier eerst de laatst gepubliceerde lijst, de huidige tabel in OA (bijvoorbeeld `alternatieve-prk-regels-20260916.csv`). OA **voegt** een laadbestand **toe** aan die tabel; zonder deze lijst kan de app niet zien welke regels OA al heeft.
 - **Export → Laadbestand maken…:** het OA-laadbestand `alternatieve-prk-regels-<jjjjmmdd>.csv`. Dit stuur je naar OA.
   - Precies de kolommen `AdviesPrk;AdviesPrkNaam;AlternatiefPrk;AlternatiefPrkNaam;Categorie`.
