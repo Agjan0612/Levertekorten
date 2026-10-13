@@ -1,6 +1,6 @@
 # Voortgang – Beoordelingsapp alternatieven (Project Levertekorten)
 
-*Stand: 12 oktober 2026. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
+*Stand: 13 oktober 2026. Dit document is bedoeld om in een nieuwe sessie verder te bouwen. Lees ook `CLAUDE.md` (technische richtlijnen) en `README.md` (werkwijze voor de gebruikers).*
 
 ## 1. Doel
 
@@ -123,6 +123,8 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 **B. Nu aan de beurt**
 0. **Uitnodiging versturen** (opdrachtgever): het concept staat in zijn Gmail (aan de twee andere panelleden). Eerst de twee datums invullen (uiterste datum beoordelen, datum paneloverleg). De Word-handleiding is niet bijgevoegd (de online link staat in de mail); eventueel zelf toevoegen. Daarna: in de logboeken (`auth_logs`) kijken of het inloggen lukt, ook bij de mailscanners van Mosadex en de Service Apotheek.
 3. De eerste echte test: inloggen (met code), oordelen geven, tweede apotheker, Coördineren, laadbestand. Daarna de proefoordelen wissen (via `execute_sql`) zodat het panel leeg begint.
+   - **Werkwijze per ronde voor de coördinator:** (1) bovenaan de gepubliceerde lijst laden (nu `alternatieve-prk-regels-20260916.csv`; daarna steeds de *volledige lijst* uit de vorige ronde); (2) na het paneloverleg *Laadbestand maken…*, samenvatting controleren en naar OA sturen (OA voegt toe en kan niets verwijderen); (3) *Volledige lijst maken…* en bewaren voor de volgende ronde; (4) *Logboek* en *Back-up* bewaren.
+   - Vragen als "zit product X in de advieslijst?" beantwoorden via **Coördineren → Opzoeken** (naam, merknaam, PRK of ZI). Voorbeeld 12 okt: tramadol druppels (PRK 40967, prio 18, 6 alternatieven) en Xarelto suspensie (PRK 209872, prio 49, 5 alternatieven) staan in de huidige lijst, nog geen advies in OA; de opdrachtgever heeft de vraagsteller zelf beantwoord.
 4. ~~Testen met de echte gepubliceerde lijst van 16-09.~~ **Gedaan (9 okt)**, zie §6. De opdrachtgever kreeg een voorbeeld van het Logboek (Excel) en het laadbestand (CSV). Laad deze lijst bij de echte ronde in het coördinatorscherm (*Gepubliceerde lijst*); 44 regels uit de huidige tekortenlijst staan er al in (niveau "Al gepubliceerd (16-09)").
 5. ~~Voegt OA toe of vervangt het?~~ **Beantwoord (11 okt): OA voegt toe.** De app is daarop aangepast (zie §2, stap 16, en §3 *Laadbestand*). OA kan geen regels verwijderen (12 okt). Of OA zelf ontdubbelt is onbekend; de app voorkomt dubbelingen zolang de juiste (laatste volledige) lijst als gepubliceerde lijst is geladen.
 
@@ -137,10 +139,13 @@ Uit de logboeken (7 okt, avond): inloggen via Brevo geslaagd op twee adressen va
 
 **D. Overige ideeën**
 - ~~Coördinatorscherm: besluit wissen, categorie-keuzelijst, paneltegels, uitleg back-up, grijze tekst~~ **Gedaan (8 okt).** Handleidingen bijgewerkt (tekst en schermafbeeldingen).
-- **Gegevens:** twee gepubliceerde alternatieven bij PRK 133612 (PRK 49026 en 49034, prednisolon drank) staan niet meer in de Z-index. Het panel zal die waarschijnlijk afwijzen.
+- **Gegevens:** twee gepubliceerde alternatieven bij PRK 133612 (PRK 49026 en 49034, prednisolon drank) staan niet meer in de Z-index. Sinds 12 okt beoordeelt het panel regels die al in OA staan niet meer; die twee blijven dus in OA staan (OA kan niets verwijderen). Eventueel apart melden bij OA/Mosadex.
+- **Handleiding beoordelaars:** een paar oudere schermafbeeldingen tonen nog "… van 299" (nu 255 te beoordelen). De tekst klopt; de afbeeldingen kunnen bij gelegenheid opnieuw.
 - **GitHub Actions:** waarschuwing dat Node 20 verouderd is. Later de actions bijwerken.
 
 ## 8. Verder in een nieuwe sessie
+
+**Waar we staan (13 okt):** de app staat online en is klaar voor de eerste echte ronde. Sinds 9 okt toegevoegd en live: laadbestand met alleen nieuwe regels plus een volledige lijst voor de volgende ronde (PR #8), regels die al in OA staan worden niet meer beoordeeld (255 i.p.v. 299 regels; PR #8) en het tabblad *Opzoeken* voor de coördinator (PR #10). Alles staat op GitHub (`main`); er staat niets open op een branch. De database is leeg (geen oefenoordelen). Wat nu moet gebeuren: de opdrachtgever verstuurt de uitnodiging (concept in Gmail, eerst twee datums invullen); daarna volgen we in de logboeken of het panel kan inloggen en doorlopen we de eerste ronde (§7B).
 
 Start een sessie met de repository **Levertekorten**, met de Supabase-connector aan, en begin bijvoorbeeld met:
 
